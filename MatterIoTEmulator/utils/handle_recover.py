@@ -25,7 +25,7 @@ import configparser
 import time
 import datetime
 from datetime import date
-from constants import CHIP_FACTORY_FILE, TEMP_PATH
+from constants import CHIP_FACTORY_FILE, TEMP_PATH, NUMBER_STORAGE_FILE
 
 SOURCE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 CURRENT_TEMP_DIR = SOURCE_PATH + TEMP_PATH
@@ -163,8 +163,8 @@ class HandleRecoverDevices():
             fullPath = path_storage + str(dir)
             if (not os.path.isdir(fullPath)):
                 continue
-            create_time = int(
-                HandleRecoverDevices.get_order_created_folder(fullPath))
+            tmp_time = HandleRecoverDevices.get_order_created_folder(fullPath)
+            create_time = int(tmp_time) if tmp_time is not None else 0
             if (create_time != 0):
                 dict_dir_time[str(dir)] = create_time
 
@@ -185,7 +185,10 @@ class HandleRecoverDevices():
             return 0
         if (dict_config.get('device-type') != "" and dict_config.get('ipv4') !=
                 "" and dict_config.get('ipv6') != "" and dict_config.get('create-time') != ""):
-            return dict_config.get('create-time')
+            return dict_config.get('create-time', 0)
+        elif (os.path.exists(path)):
+            shutil.rmtree(path)
+        return 0
 
     @staticmethod
     def sort_all_dirs(dict_dir_time):
@@ -221,6 +224,48 @@ class HandleRecoverDevices():
             if val == value:
                 return key
         return "None"
+    
+    @staticmethod
+    def remove_storage_folder_lack_file():
+        """
+        Remove storage folder of device which 
+        has lack config file.
+        """
+        path_storage = CURRENT_TEMP_DIR
+        try: 
+            list_dir = os.listdir(path_storage)
+        except OSError as err:
+            print("Fail to get path of storage folder: {}".format(err))    
+        for dir in list_dir:
+            fullPath = path_storage + str(dir)
+            entries = os.listdir(fullPath)
+            # Count the files in storage folder
+            file_count = sum(os.path.isfile(os.path.join(fullPath, entry)) for entry in entries)
+            if((file_count < NUMBER_STORAGE_FILE) and (os.path.exists(fullPath))):
+                shutil.rmtree(fullPath)
+                print("Remove temp folder {}, reason lack file".format(fullPath)) 
+
+    @staticmethod
+    def remove_un_commissioned_storage_folder():
+        """
+        Remove storage folder of device which 
+        has not commissioned yet.
+        """
+        try:
+            HandleRecoverDevices.remove_storage_folder_lack_file()
+            HandleRecoverDevices.list_recover_devices = HandleRecoverDevices.get_all_storage_folders()
+            for i, subdir in enumerate(HandleRecoverDevices.list_recover_devices):
+                path = CURRENT_TEMP_DIR + subdir
+                if(os.path.isdir(path)):
+                    config_file = path + "/" + CHIP_FACTORY_FILE
+                    dict_config = HandleRecoverDevices.read_config_file(config_file, subdir)
+                    is_recover = (dict_config.get('is_recover') is not None) and (int(dict_config.get('is_recover')))
+                    if(not is_recover):
+                        print(f"Remove un-commissioned device: {path}")
+                        shutil.rmtree(path)
+        except Exception as err:
+            print("Fail to remove uncommissioned storage folder: {}".format(err))  
+
 
     @staticmethod
     def execute_cmd(cmd):

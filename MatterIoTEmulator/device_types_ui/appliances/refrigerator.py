@@ -307,7 +307,7 @@ class Refrigerator(BaseDeviceUI):
         logging.info("RPC SET alarm feature: " + str(feature))
         self.mutex.acquire(timeout=1)
         self.client.SetRefrigerator(
-            {"RefrigeratorAlarmFeature": {"featureMap": feature}})
+            {"refrigeratorAlarmFeature": {"featureMap": feature}})
         self.mutex.release()
 
     def handle_alarm_state_changed(self, alarm):
@@ -315,10 +315,10 @@ class Refrigerator(BaseDeviceUI):
         Handle set alarm state when alarm state change
         :param alarm: Alarm state value
         """
-        logging.info("RPC SET alarm state: " + str(alarm))
+        logging.info("RPC SET alarm state: " + str(bool(alarm)))
         self.mutex.acquire(timeout=1)
         self.client.SetRefrigerator(
-            {"RefrigeratorAlarm": {"alarm": bool(alarm)}})
+            {"refrigeratorAlarm": {"alarm": bool(alarm)}})
         self.mutex.release()
 
     def handle_cold_temp_feature_changed(self, cold_feature):
@@ -333,7 +333,7 @@ class Refrigerator(BaseDeviceUI):
         self.clear_layout_cold()
         self.mutex.acquire(timeout=1)
         self.client.SetColdCabinet(
-            {"ColdTempControlFeature": {"featureMap": cold_feature}})
+            {"coldTempControlFeature": {"featureMap": cold_feature}})
         self.mutex.release()
         if cold_feature == TEMP_NUMBER_FEATURE:
             self.number_temp_cold = True
@@ -416,7 +416,7 @@ class Refrigerator(BaseDeviceUI):
         self.clear_layout_freeze()
         self.mutex.acquire(timeout=1)
         self.client.SetFreezeCabinet(
-            {"FreezeTempControlFeature": {"featureMap": freeze_feature}})
+            {"freezeTempControlFeature": {"featureMap": freeze_feature}})
         self.mutex.release()
         if freeze_feature == TEMP_NUMBER_FEATURE:
             self.number_temp_freeze = True
@@ -506,7 +506,7 @@ class Refrigerator(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         self.client.SetColdCabinet(
             {
-                'RefTemperatureControl': {
+                'refTemperatureControl': {
                     'temperatureControl': self.temp_cold,
                     'step': self.step_cold,
                     'selectedTemperatureLevel': level_mode}})
@@ -521,7 +521,7 @@ class Refrigerator(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         self.client.SetFreezeCabinet(
             {
-                'RefTemperatureControl': {
+                'refTemperatureControl': {
                     'temperatureControl': self.temp_freeze,
                     'step': self.step_freeze,
                     'selectedTemperatureLevel': level_mode}})
@@ -535,7 +535,7 @@ class Refrigerator(BaseDeviceUI):
             if 0 <= step_cold <= 10000:
                 self.is_edit_step_cold = True
                 data = {
-                    'RefTemperatureControl': {
+                    'refTemperatureControl': {
                         'temperatureControl': self.temp_cold,
                         'step': step_cold,
                         'selectedTemperatureLevel': self.temp_level_cold}}
@@ -553,7 +553,7 @@ class Refrigerator(BaseDeviceUI):
             if 0 <= step_freeze <= 10000:
                 self.is_edit_step_freeze = True
                 data = {
-                    'RefTemperatureControl': {
+                    'refTemperatureControl': {
                         'temperatureControl': self.temp_freeze,
                         'step': step_freeze,
                         'selectedTemperatureLevel': self.temp_level_freeze}}
@@ -601,7 +601,7 @@ class Refrigerator(BaseDeviceUI):
 
             if 0 <= value_cold <= 2500:
                 data = {
-                    "RefTemperatureMeasurement": {
+                    "refTemperatureMeasurement": {
                         "temperatureMeasure": value_cold}}
                 self.client.SetColdCabinet(data)
                 self.is_edit_clod = True
@@ -611,7 +611,7 @@ class Refrigerator(BaseDeviceUI):
 
             if -2000 <= value_freezer <= 0:
                 data = {
-                    "RefTemperatureMeasurement": {
+                    "refTemperatureMeasurement": {
                         "temperatureMeasure": value_freezer}}
                 self.client.SetFreezeCabinet(data)
                 self.is_edit_freezer = True
@@ -647,28 +647,26 @@ class Refrigerator(BaseDeviceUI):
         """
         try:
             data_1 = {
-                "RefrigeratorMode": {
-                    "currentMode": 0}, "RefrigeratorAlarmFeature": {
-                    "featureMap": 1}, "RefrigeratorAlarm": {
-                    "alarm": bool(
-                        self.alarm_state)}}
+                "refrigeratorMode": {"currentMode": 0},
+                "refrigeratorAlarmFeature": {"featureMap": 1},
+                "refrigeratorAlarm": {"alarm": True}}
             data_2 = {
-                'ColdTempControlFeature': {
+                'coldTempControlFeature': {
                     'featureMap': 0},
-                "RefTemperatureControl": {
+                "refTemperatureControl": {
                     "temperatureControl": 545,
                     'step': 100,
                     'selectedTemperatureLevel': 0},
-                "RefTemperatureMeasurement": {
+                "refTemperatureMeasurement": {
                     "temperatureMeasure": 211}}
             data_3 = {
-                'FreezeTempControlFeature': {
+                'freezeTempControlFeature': {
                     'featureMap': 0},
-                "RefTemperatureControl": {
-                    "temperatureControl": -1554,
+                "refTemperatureControl": {
+                    "temperatureControl": -1555,
                     'step': 100,
                     'selectedTemperatureLevel': 0},
-                "RefTemperatureMeasurement": {
+                "refTemperatureMeasurement": {
                     "temperatureMeasure": -524}}
             self.client.SetRefrigerator(data_1)
             self.client.SetColdCabinet(data_2)
@@ -686,7 +684,7 @@ class Refrigerator(BaseDeviceUI):
         system_mode = self.mod_box.currentIndex()
         self.mutex.acquire(timeout=1)
         self.client.SetRefrigerator(
-            {"RefrigeratorMode": {"currentMode": system_mode}})
+            {"refrigeratorMode": {"currentMode": system_mode}})
         self.mutex.release()
         self.is_on_control = False
 
@@ -713,7 +711,7 @@ class Refrigerator(BaseDeviceUI):
         logging.info("RPC SET Freezer Temp level: " + str(level))
         self.mutex.acquire(timeout=1)
         data = {
-            "RefTemperatureControl": {
+            "refTemperatureControl": {
                 "temperatureControl": level,
                 'step': self.step_freeze,
                 'selectedTemperatureLevel': self.temp_level_freeze}}
@@ -730,7 +728,7 @@ class Refrigerator(BaseDeviceUI):
         logging.info("RPC SET Cold cabinet Temp level: " + str(level))
         self.mutex.acquire(timeout=1)
         data = {
-            "RefTemperatureControl": {
+            "refTemperatureControl": {
                 "temperatureControl": level,
                 'step': self.step_cold,
                 'selectedTemperatureLevel': self.temp_level_cold}}
@@ -754,29 +752,29 @@ class Refrigerator(BaseDeviceUI):
 
             if device_refri_status['status'] == 'OK':
                 if (self.system_mode !=
-                        device_refri_status['reply']['RefrigeratorMode']['currentMode']):
-                    self.system_mode = device_refri_status['reply']['RefrigeratorMode']['currentMode']
+                        device_refri_status['reply']['refrigeratorMode']['currentMode']):
+                    self.system_mode = device_refri_status['reply']['refrigeratorMode']['currentMode']
                     self.mod_box.setCurrentIndex(self.system_mode)
 
                 if (self.alarm_state !=
-                        device_refri_status['reply']['RefrigeratorAlarm']['alarm']):
-                    self.alarm_state = device_refri_status['reply']['RefrigeratorAlarm']['alarm']
+                        device_refri_status['reply']['refrigeratorAlarm']['alarm']):
+                    self.alarm_state = device_refri_status['reply']['refrigeratorAlarm']['alarm']
                     self.alarm_state_box.setCurrentIndex(self.alarm_state)
 
-                # if(self.alarm_feature != device_refri_status['reply']['RefrigeratorAlarmFeature']['featureMap']):
-                #     self.alarm_feature = device_refri_status['reply']['RefrigeratorAlarmFeature']['featureMap']
+                # if(self.alarm_feature != device_refri_status['reply']['refrigeratorAlarmFeature']['featureMap']):
+                #     self.alarm_feature = device_refri_status['reply']['refrigeratorAlarmFeature']['featureMap']
                 #     self.alarm_feature_box.setCurrentIndex(self.alarm_feature)
 
             if device_cold_status['status'] == 'OK':
-                self.temp_cold = device_cold_status['reply']['RefTemperatureControl']['temperatureControl']
+                self.temp_cold = device_cold_status['reply']['refTemperatureControl']['temperatureControl']
 
                 self.step_cold = (
-                    device_cold_status['reply']['RefTemperatureControl']['step'])
+                    device_cold_status['reply']['refTemperatureControl']['step'])
 
                 if self.temp_level_cold != (
-                        device_cold_status['reply']['RefTemperatureControl']['selectedTemperatureLevel']):
+                        device_cold_status['reply']['refTemperatureControl']['selectedTemperatureLevel']):
                     self.temp_level_cold = (
-                        device_cold_status['reply']['RefTemperatureControl']['selectedTemperatureLevel'])
+                        device_cold_status['reply']['refTemperatureControl']['selectedTemperatureLevel'])
                     if (self.select_temp_level_cold and (
                             self.level_box_cold is not None)):
                         self.level_box_cold.setCurrentIndex(
@@ -793,27 +791,27 @@ class Refrigerator(BaseDeviceUI):
 
                 self.temp_cold_sensor = round(
                     float(
-                        device_cold_status['reply']['RefTemperatureMeasurement']['temperatureMeasure'] /
+                        device_cold_status['reply']['refTemperatureMeasurement']['temperatureMeasure'] /
                         100),
                     2)
                 if self.is_edit_clod:
                     self.line_edit_cold.setText(str(self.temp_cold_sensor))
 
                 if (self.cold_temp_feature !=
-                        device_cold_status['reply']['ColdTempControlFeature']['featureMap']):
-                    self.cold_temp_feature = device_cold_status['reply']['ColdTempControlFeature']['featureMap']
+                        device_cold_status['reply']['coldTempControlFeature']['featureMap']):
+                    self.cold_temp_feature = device_cold_status['reply']['coldTempControlFeature']['featureMap']
                     self.cold_tem_control_box.setCurrentIndex(
                         self.cold_temp_feature)
 
             if device_free_status['status'] == 'OK':
-                self.temp_freeze = device_free_status['reply']['RefTemperatureControl']['temperatureControl']
+                self.temp_freeze = device_free_status['reply']['refTemperatureControl']['temperatureControl']
                 self.step_freeze = (
-                    device_free_status['reply']['RefTemperatureControl']['step'])
+                    device_free_status['reply']['refTemperatureControl']['step'])
 
                 if self.temp_level_freeze != (
-                        device_free_status['reply']['RefTemperatureControl']['selectedTemperatureLevel']):
+                        device_free_status['reply']['refTemperatureControl']['selectedTemperatureLevel']):
                     self.temp_level_freeze = (
-                        device_free_status['reply']['RefTemperatureControl']['selectedTemperatureLevel'])
+                        device_free_status['reply']['refTemperatureControl']['selectedTemperatureLevel'])
                     if (self.select_temp_level_freeze and (
                             self.level_box_freeze is not None)):
                         self.level_box_freeze.setCurrentIndex(
@@ -832,16 +830,16 @@ class Refrigerator(BaseDeviceUI):
 
                 self.temp_freeze_sensor = round(
                     float(
-                        device_free_status['reply']['RefTemperatureMeasurement']['temperatureMeasure'] /
+                        device_free_status['reply']['refTemperatureMeasurement']['temperatureMeasure'] /
                         100), 2)
                 if self.is_edit_freezer:
                     self.line_edit_freezer.setText(
                         str(self.temp_freeze_sensor))
 
                 if (self.free_temp_feature !=
-                        device_free_status['reply']['FreezeTempControlFeature']['featureMap']):
+                        device_free_status['reply']['freezeTempControlFeature']['featureMap']):
                     self.free_temp_feature = device_free_status['reply'][
-                        'FreezeTempControlFeature']['featureMap']
+                        'freezeTempControlFeature']['featureMap']
                     self.freeze_tem_control_box.setCurrentIndex(
                         self.free_temp_feature)
 

@@ -73,7 +73,7 @@ from device_types_ui.closures.window_covering import WindowCovering
 from device_types_ui.HVAC.fan import Fan
 from device_types_ui.HVAC.thermostat import Thermostat
 from device_types_ui.HVAC.heating_cooling_unit import HeatingCooling
-from device_types_ui.HVAC.air_purifier import Air_Purifier
+from device_types_ui.HVAC.air_purifier import AirPurifier
 from credentials.development.gen_dac_cert import GenDacTool
 
 from device_types_ui.appliances.laundry_washer import LaundryWasher
@@ -377,7 +377,7 @@ class MainWindow(QMainWindow):
             self.ui.cbb_device_selection.addItem(device)
         # Set device type
         self.ui.cbb_device_selection.setCurrentText(
-            settings.value("cbb_device_selection"))
+            settings.value("cbb_device_selection", "On/Off Light(0x0100)"))
 
         # Hide QR
         self.ui.lbl_qr_image.hide()
@@ -385,10 +385,10 @@ class MainWindow(QMainWindow):
 
         # Set value from QSettings
         self.ui.txt_serial_number.setText(str(self.generate_serial_number()))
-        self.ui.txt_vendorid.setText(settings.value("txt_vendorid"))
-        self.ui.txt_productid.setText(settings.value("txt_productid"))
-        self.ui.txt_discriminator.setText(settings.value("txt_discriminator"))
-        self.ui.txt_pincode.setText(settings.value("txt_pincode"))
+        self.ui.txt_vendorid.setText(settings.value("txt_vendorid", "65521"))
+        self.ui.txt_productid.setText(settings.value("txt_productid", "32788"))
+        self.ui.txt_discriminator.setText(settings.value("txt_discriminator", "3840"))
+        self.ui.txt_pincode.setText(settings.value("txt_pincode", "20202021"))
 
         # Accept number only
         validator = ULongValidator(MAX_SERIAL_NUMBER)
@@ -413,7 +413,7 @@ class MainWindow(QMainWindow):
     def generate_serial_number(self):
         settings = QSettings("LGE.HE.TSC", "MatterIoTEmulator")
         list_running_device = [device.split('-')[-1] for device in self.get_list_device_from_file()]
-        temp_serial = int(settings.value("txt_serial_number")) + 1
+        temp_serial = int(settings.value("txt_serial_number", "2021")) + 1
         if temp_serial > MAX_SERIAL_NUMBER:
             temp_serial = 1
         settings.setValue("txt_serial_number", temp_serial)
@@ -513,7 +513,7 @@ class MainWindow(QMainWindow):
                 YELLOW,
                 "Please wait...",
                 BLACK)
-            self.timeqr = Timer(10, self.re_gennerate_qr)
+            self.timeqr = Timer(20, self.re_gennerate_qr)
             if (not self.isDeviceStarted):
                 self.timeqr.start()
         elif connect_status == STT_DEVICE_STARTED:
@@ -630,7 +630,7 @@ class MainWindow(QMainWindow):
         elif self.current_device_type == "HeatingCoolingUnit(0x0300)":
             self.ctrl = HeatingCooling(self)
         elif self.current_device_type == "Air Purifier(0x002D)":
-            self.ctrl = Air_Purifier(self)
+            self.ctrl = AirPurifier(self)
         elif self.current_device_type == "Air Quality Sensor(0x002C)":
             self.ctrl = AirQualitySensor(self)
         elif self.current_device_type == "Dishwasher(0x0075)":
@@ -790,6 +790,7 @@ class MainWindow(QMainWindow):
             self.check_recover = True
         else:
             self.check_recover = False
+        logging.info(f"check recover device: {self.check_recover}")
 
     def check_duplicate_device(self):
         """
@@ -1032,12 +1033,12 @@ class MainWindow(QMainWindow):
         """
         Handle stop device.
         """
+        self.isDeviceStarted = False
         # remove temp folder
         if ((not self.connected_device) and (not self.is_recover)):
             self.handle_recover_devices.remove_storage_folder(self.targetId)
         self.destroy_timer_qr()
         if (self.generateIp_done or self.isIPBindFail):
-            self.isDeviceStarted = False
             if (len(list_status_device) > 0):
                 list_status_device.remove(1)
             self.notify_device_stopped()
@@ -1225,9 +1226,10 @@ class MainWindow(QMainWindow):
                         self.isIPBindFail = True
                         self.wkr.connect_status.emit(STT_BIND_IP_FAIL_BACKEND)
 
-                    elif ((FLAG_DEVICE_CONFIGURATION in line) and (not self.isDeviceStarted)):
+                    elif ((FLAG_DEVICE_STARTED in line) and (not self.isDeviceStarted)):
+                        self.isDeviceStarted = True
                         if self.check_recover:
-                            self.isDeviceStarted = True
+                            # If recovering, do not gen qr code
                             if (len(list_status_device) > 0):
                                 list_status_device.remove(1)
                             time.sleep(3)
@@ -1239,12 +1241,6 @@ class MainWindow(QMainWindow):
                                 HandleRecoverDevices.set_is_click_from_callback(
                                     False)
                                 self.notify_recover_done()
-
-                    elif ((FLAG_DEVICE_STARTED in line) and (not self.isDeviceStarted)):
-                        self.isDeviceStarted = True
-                        if self.check_recover:
-                            # If recovering, do not gen qr code
-                            pass
                         else:
                             self.wkr.connect_status.emit(STT_DEVICE_STARTED)
                             self.wkr.onboarding_code.emit(
@@ -1894,6 +1890,8 @@ class Main(QMainWindow):
         tcpDump_thread.start()
 
         # handle recover tab info
+        HandleRecoverDevices.remove_un_commissioned_storage_folder()
+        
         HandleRecoverDevices.handle_recover_devices(
             self.addNewTab, self.listTab)
         self.is_recover_device = HandleRecoverDevices.check_recover()

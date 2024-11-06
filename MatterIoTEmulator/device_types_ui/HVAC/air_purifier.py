@@ -25,7 +25,7 @@ import os
 import time
 import random
 
-from rpc.airpurifier_client import Air_Purifier_Client
+from rpc.airpurifier_client import AirPurifierClient
 from ..stoppablethread import UpdateStatusThread
 from ..constants_device import *
 from constants import *
@@ -64,28 +64,48 @@ STEP = 4
 AIR_FLOW_DIRECTION = 5
 ALL_FEATURE = 6
 
+ROCK_LEFT_RIGHT = 1
+ROCK_UP_DOWN = 2
+ROCK_ROUND = 4
 
-class Air_Purifier(BaseDeviceUI):
+SLEEP_WIND = 1
+NATURAL_WIND = 2
+
+FORWARD = 0
+REVERSE = 1
+
+
+class AirPurifier(BaseDeviceUI):
     """
-    Air_Purifier device UI controller represent some attribues, clusters
+    AirPurifier device UI controller represent some attribues, clusters
     and endpoints corresspoding to Matter Specification v1.2
     """
 
     def __init__(self, parent) -> None:
         """
-        Create a new `Air_Purifier` UI.
-        :param parent: An UI object load Air_Purifier device UI controller.
+        Create a new `AirPurifier` UI.
+        :param parent: An UI object load AirPurifier device UI controller.
         """
         super().__init__(parent)
+
         self.fan_mode = 0
+        self.fan_mode_sequence = 2
+        self.support_rock_mode = True
+        self.rock_mode = 0
+        self.support_wind_mode = True
+        self.wind_mode = 0
+        self.air_flow = 0  
+        self.percent_setting = 100
+        self.speed_setting = 80  
+        self.cr_feature_type = ALL_FEATURE
+        self.cr_value_carbon = 99
+
         self.air_quality = 0
         self.temperature = 0
         self.humidity = 0
         self.condition_filter = 0
         self.pm25 = 0
         self.enable_update = True
-        self.cr_feature_type = 6
-        self.cr_value_carbon = 99
         self.is_edit_temp = True
         self.is_edit_hum = True
         self.is_edit_pm25 = True
@@ -290,7 +310,7 @@ class Air_Purifier(BaseDeviceUI):
         self.parent.ui.lo_controller.addWidget(self.fan_control_box)
 
         # Init rpc
-        self.client = Air_Purifier_Client(self.config)
+        self.client = AirPurifierClient(self.config)
         self.set_initial_value()
         self.start_update_device_status_thread()
         logging.debug("Init Fan done")
@@ -315,6 +335,14 @@ class Air_Purifier(BaseDeviceUI):
         """Enable 'is_edit_carbon' attribute when line edit cacbon filter is editting"""
         self.is_edit_carbon = False
 
+    def get_air_purifier_data(self, fan_feature_type = None, fan_data = None):
+        data = {'featureMapFanControl': {'featureMap': fan_feature_type if fan_feature_type is not None else self.cr_feature_type},
+                'activatedCarbonFilterMonitoring': {'condition': self.cr_value_carbon}
+                }
+        if fan_data is not None:
+            data.update(fan_data)
+        return data
+
     def on_return_pressed(self):
         """
         Handle set temperature measurement or
@@ -333,52 +361,40 @@ class Air_Purifier(BaseDeviceUI):
                 float(self.line_edit_carbon.text()))
 
             if 0 <= value_temp <= 10000:
-                data_tem = {
-                    'TemperatureMeasurement': {
-                        'MeasuredValue': value_temp}}
-                self.client.setMeasuredValue(data_tem)
+                data_tem = {'measuredValue': value_temp}
+                self.client.SetTempValue(data_tem)
                 self.is_edit_temp = True
             else:
                 self.message_box(ER_TEMP)
                 self.line_edit_temp.setText(str(self.temperature))
 
             if 0 <= value_hum <= 10000:
-                data_humidity = {
-                    'RelativeHumidityMeasurement': {
-                        'HumidityValue': value_hum}}
-                self.client.setHumidityValue(data_humidity)
+                data_humidity = {'measuredValue': value_hum}
+                self.client.SetHumidityValue(data_humidity)
                 self.is_edit_hum = True
             else:
                 self.message_box(ER_HUM)
                 self.line_edit_hum.setText(str(self.humidity))
 
             if 0 <= hepa_filter_condition <= 100:
-                data_condition = {
-                    'HEPAFilterMonitoring': {
-                        'Condition': hepa_filter_condition}}
-                self.client.setCondition(data_condition)
+                data_condition = {'condition': hepa_filter_condition}
+                self.client.SetCondition(data_condition)
                 self.is_edit_con = True
             else:
                 self.message_box(ER_CON)
                 self.line_edit_con.setText(str(self.condition_filter))
 
             if 0 <= cacbon_filter_condition <= 100:
-                data_condition_carbon = {
-                    'fan': {
-                        'fanMode': self.fan_mode}, 'ActivatedCarbonFilterMonitoring': {
-                        'Condition': cacbon_filter_condition}, 'FeatureMapFanControl': {
-                        'featureMap': self.cr_feature_type}}
-                self.client.SetAirPurifierSensor(data_condition_carbon)
+                self.cr_value_carbon = cacbon_filter_condition                
+                self.client.SetAirPurifierSensor(self.get_air_purifier_data())
                 self.is_edit_carbon = True
             else:
                 self.message_box(ER_CARBON)
                 self.line_edit_carbon.setText(str(self.cr_value_carbon))
 
             if 0 <= value_pm25 <= 300:
-                data_PM25 = {
-                    'PM25ConcentrationMeasurement': {
-                        'mMeasuredValue': value_pm25}}
-                self.client.setPM25(data_PM25)
+                data_PM25 = {'measuredValue': value_pm25}
+                self.client.SetPM25(data_PM25)
                 self.is_edit_pm25 = True
             else:
                 self.message_box(ER_PM25)
@@ -423,42 +439,44 @@ class Air_Purifier(BaseDeviceUI):
         :param feature_type: Value feature map of fan control cluster
         """
         logging.info("RPC SET fan feature: " + str(feature_type))
-        self.mutex.acquire(timeout=1)
-        self.client.SetAirPurifierSensor(
-            {
-                'fan': {
-                    'fanMode': self.fan_mode}, 'ActivatedCarbonFilterMonitoring': {
-                    'Condition': self.cr_value_carbon}, 'FeatureMapFanControl': {
-                    'featureMap': feature_type}})
+        self.mutex.acquire(timeout=1)     
+        self.client.SetAirPurifierSensor(self.get_air_purifier_data(fan_feature_type = feature_type))
         self.mutex.release()
-
+ 
     def set_initial_value(self):
         """
         Handle set initial value of all supported attributes
         to matter device(backend) through rpc service
         """
         try:
-            dataFan = {
-                'fan': {
-                    'fanMode': MEDIUM_MODE}, 'ActivatedCarbonFilterMonitoring': {
-                    'Condition': 99}, 'FeatureMapFanControl': {
-                    'featureMap': self.cr_feature_type}}
-            self.client.SetAirPurifierSensor(dataFan)
-            data_tem = {'TemperatureMeasurement': {'MeasuredValue': 2821}}
-            self.client.setMeasuredValue(data_tem)
-            data_condition = {'HEPAFilterMonitoring': {'Condition': 98}}
-            self.client.setCondition(data_condition)
-            data_air = {'AirQuality': {'AirQuality': AIR_GOOD}}
-            self.client.setAirQuality(data_air)
-            data_humidity = {
-                'RelativeHumidityMeasurement': {
-                    'HumidityValue': 5011}}
-            self.client.setHumidityValue(data_humidity)
-            data_PM25 = {
-                'PM25ConcentrationMeasurement': {
-                    'mMeasuredValue': 20}}
-            self.client.setPM25(data_PM25)
-            self.fan_feature_box.setCurrentIndex(self.cr_feature_type)
+            fan_data ={
+                'fanControl':{
+                    'fanMode': OFF_MODE,
+                    'fanModeSequence': 2,
+                    'fanWind': {'windSetting': SLEEP_WIND, 'windSupport': True}, 
+                    'fanSpeed': {'speedSetting': 0},
+                    'fanPercent': {'percentSetting': 100},
+                    'fanRock': {'rockSetting': ROCK_LEFT_RIGHT,'rockSupport': True},
+                    'fanAirFlowDirection': {'airFlowDirection': FORWARD}
+                }
+            }          
+            self.client.SetAirPurifierSensor(self.get_air_purifier_data(fan_data = fan_data))
+            self.fan_feature_box.setCurrentIndex(ALL_FEATURE)
+
+            data_tem = {'measuredValue': 2821}
+            self.client.SetTempValue(data_tem)
+
+            data_hepa_condition = {'condition': 98}
+            self.client.SetCondition(data_hepa_condition)
+
+            data_air = {'airQuality': AIR_GOOD}
+            self.client.SetAirQuality(data_air)
+
+            data_humidity = {'measuredValue': 5011}
+            self.client.SetHumidityValue(data_humidity)
+
+            data_PM25 = {'measuredValue': 20}
+            self.client.SetPM25(data_PM25)
         except Exception as e:
             self.parent.wkr.connect_status.emit(STT_RPC_INIT_FAIL)
             logging.info("Can not set initial value: " + str(e))
@@ -476,38 +494,38 @@ class Air_Purifier(BaseDeviceUI):
         self.enable_update = False
         QTimer.singleShot(1, self.enable_update_mode)
         self.mutex.acquire(timeout=1)
-        self.client.SetAirPurifierSensor(
-            {
-                'fan': {
-                    'fanMode': mode}, 'ActivatedCarbonFilterMonitoring': {
-                    'Condition': self.cr_value_carbon}, 'FeatureMapFanControl': {
-                    'featureMap': self.cr_feature_type}})
-        self.fan_mode = mode
-        self.mutex.release()
+        fan_data ={
+            'fanControl': {
+                'fanMode': mode,
+                'fanModeSequence': self.fan_mode_sequence
+            }
+        } 
+        self.client.SetAirPurifierSensor(self.get_air_purifier_data(fan_data = fan_data))
+        self.mutex.release()      
 
     def check_pm25(self, pm25):
         """Check pm25 value to set air quality value respectively"""
         if 0 < self.pm25 <= 50:
-            data_air = {'AirQuality': {'AirQuality': AIR_GOOD}}
-            self.client.setAirQuality(data_air)
+            data_air = {'airQuality': AIR_GOOD}
+            self.client.SetAirQuality(data_air)
         elif 50 < self.pm25 <= 100:
-            data_air = {'AirQuality': {'AirQuality': AIR_FAIR}}
-            self.client.setAirQuality(data_air)
+            data_air = {'airQuality': AIR_FAIR}
+            self.client.SetAirQuality(data_air)
         elif 100 < self.pm25 <= 150:
-            data_air = {'AirQuality': {'AirQuality': AIR_MODERATE}}
-            self.client.setAirQuality(data_air)
+            data_air = {'airQuality': AIR_MODERATE}
+            self.client.SetAirQuality(data_air)
         elif 150 < self.pm25 <= 200:
-            data_air = {'AirQuality': {'AirQuality': AIR_POOR}}
-            self.client.setAirQuality(data_air)
+            data_air = {'airQuality': AIR_POOR}
+            self.client.SetAirQuality(data_air)
         elif 200 < self.pm25 <= 250:
-            data_air = {'AirQuality': {'AirQuality': AIR_VERYPOOR}}
-            self.client.setAirQuality(data_air)
+            data_air = {'airQuality': AIR_VERYPOOR}
+            self.client.SetAirQuality(data_air)
         elif 250 < self.pm25 <= 300:
-            data_air = {'AirQuality': {'AirQuality': AIR_EXTREMELY}}
-            self.client.setAirQuality(data_air)
+            data_air = {'airQuality': AIR_EXTREMELY}
+            self.client.SetAirQuality(data_air)
         else:
-            data_air = {'AirQuality': {'AirQuality': AIR_UNKNOWN}}
-            self.client.setAirQuality(data_air)
+            data_air = {'airQuality': AIR_UNKNOWN}
+            self.client.SetAirQuality(data_air)
 
     def on_device_status_changed(self, result):
         """
@@ -518,18 +536,18 @@ class Air_Purifier(BaseDeviceUI):
         """
         # logging.info(f'on_device_status_changed {result}, RPC Port: {str(self.parent.rpcPort)}')
         try:
-            device_fan_status = result['device_fan_status']
-            device_MeasuredValue_status = result['device_MeasuredValue_status']
-            device_condition_status = result['device_condition_status']
-            device_humidity_status = result['device_humidity_status']
+            air_purifier_status = result['air_purifier_status']
+            ep2_temp_measure_status = result['ep2_temp_measure_status']
+            hepa_filter_status = result['hepa_filter_status']
+            ep3_humidity_measure_status = result['ep3_humidity_measure_status']
             device_airquality_status = result['device_air_status']
             device_concentration_status = result['device_concentration_status']
             device_state = result['device_state']
             self.parent.update_device_state(device_state)
-            if device_fan_status['status'] == 'OK':
+            if air_purifier_status['status'] == 'OK':
                 if self.enable_update:
                     self.fan_mode = (
-                        device_fan_status['reply']['fan']['fanMode'])
+                        air_purifier_status['reply']['fanControl']['fanMode'])
                     if self.fan_mode == OFF_MODE:
                         self.lbl_main_status.setText('Fan Mode: Off')
                     elif self.fan_mode == LOW_MODE:
@@ -545,46 +563,54 @@ class Air_Purifier(BaseDeviceUI):
                     elif self.fan_mode == SMART_MODE:
                         self.lbl_main_status.setText('Fan Mode: Smart')
                     self.fan_control_box.setCurrentIndex((self.fan_mode))
+
+                self.fan_mode_sequence = air_purifier_status['reply']['fanControl']['fanModeSequence']
+                self.wind_mode = air_purifier_status['reply']['fanControl']['fanWind']['windSetting']
+                self.speed_setting = air_purifier_status['reply']['fanControl']['fanSpeed']['speedSetting']
+                self.percent_setting = air_purifier_status['reply']['fanControl']['fanPercent']['percentSetting']
+                self.rock_mode = air_purifier_status['reply']['fanControl']['fanRock']['rockSetting']  
+                self.air_flow = air_purifier_status['reply']['fanControl']['fanAirFlowDirection']['airFlowDirection']          
+
             if (self.cr_feature_type !=
-                    device_fan_status['reply']['FeatureMapFanControl']['featureMap']):
-                self.cr_feature_type = device_fan_status['reply']['FeatureMapFanControl']['featureMap']
+                    air_purifier_status['reply']['featureMapFanControl']['featureMap']):
+                self.cr_feature_type = air_purifier_status['reply']['featureMapFanControl']['featureMap']
                 self.fan_feature_box.setCurrentIndex((self.cr_feature_type))
                 self.check_enable_fan_feature(self.cr_feature_type)
 
-            if device_MeasuredValue_status['status'] == 'OK':
+            if ep2_temp_measure_status['status'] == 'OK':
                 self.temperature = round(
-                    (device_MeasuredValue_status['reply']['TemperatureMeasurement']['MeasuredValue'] / 100.0), 2)
+                    (ep2_temp_measure_status['reply']['measuredValue'] / 100.0), 2)
                 if self.is_edit_temp:
                     self.line_edit_temp.setText(str(self.temperature))
 
-            if device_condition_status['status'] == 'OK':
+            if hepa_filter_status['status'] == 'OK':
                 self.condition_filter = round(
-                    device_condition_status['reply']['HEPAFilterMonitoring']['Condition'])
+                    hepa_filter_status['reply']['condition'])
                 if self.is_edit_con:
                     self.line_edit_con.setText(str(self.condition_filter))
 
-            if device_fan_status['status'] == 'OK':
+            if air_purifier_status['status'] == 'OK':
                 self.cr_value_carbon = round(
-                    device_fan_status['reply']['ActivatedCarbonFilterMonitoring']['Condition'])
+                    air_purifier_status['reply']['activatedCarbonFilterMonitoring']['condition'])
                 if self.is_edit_carbon:
                     self.line_edit_carbon.setText(str(self.cr_value_carbon))
 
-            if device_humidity_status['status'] == 'OK':
+            if ep3_humidity_measure_status['status'] == 'OK':
                 self.humidity = round(
-                    (device_humidity_status['reply']['RelativeHumidityMeasurement']['HumidityValue'] / 100.0), 2)
+                    (ep3_humidity_measure_status['reply']['measuredValue'] / 100.0), 2)
                 if self.is_edit_hum:
                     self.line_edit_hum.setText(str(self.humidity))
 
             if device_concentration_status['status'] == 'OK':
                 self.pm25 = (
-                    device_concentration_status['reply']['PM25ConcentrationMeasurement']['mMeasuredValue'])
+                    device_concentration_status['reply']['measuredValue'])
                 if self.is_edit_pm25:
                     self.line_edit_pm25.setText(str(self.pm25))
                 self.check_pm25(self.pm25)
 
             if device_airquality_status['status'] == 'OK':
                 self.air_quality = (
-                    device_airquality_status['reply']['AirQuality']['AirQuality'])
+                    device_airquality_status['reply']['airQuality'])
                 if self.air_quality == AIR_UNKNOWN:
                     self.bt_air.setText('Unknown')
                     self.bt_air.setStyleSheet("background-color: green")
@@ -627,21 +653,21 @@ class Air_Purifier(BaseDeviceUI):
                     self.update_device_status_thread):
                 try:
                     self.mutex.acquire(timeout=1)
-                    device_fan_status = self.client.GetAirPurifierSensor()
-                    device_MeasuredValue_status = self.client.getMeasuredValue()
-                    device_condition_status = self.client.getCondition()
-                    device_humidity_status = self.client.getHumidityValue()
-                    device_airquality_status = self.client.getAirQuality()
-                    device_concentration_status = self.client.getPM25()
+                    air_purifier_status = self.client.GetAirPurifierSensor()
+                    ep2_temp_measure_status = self.client.GetTempValue()
+                    hepa_filter_status = self.client.GetCondition()
+                    ep3_humidity_measure_status = self.client.GetHumidityValue()
+                    device_airquality_status = self.client.GetAirQuality()
+                    device_concentration_status = self.client.GetPM25()
                     device_state = self.client.get_device_state()
                     self.mutex.release()
                     self.sig_device_status_changed.emit(
                         {
                             'device_air_status': device_airquality_status,
-                            'device_fan_status': device_fan_status,
-                            'device_humidity_status': device_humidity_status,
-                            'device_condition_status': device_condition_status,
-                            'device_MeasuredValue_status': device_MeasuredValue_status,
+                            'air_purifier_status': air_purifier_status,
+                            'ep3_humidity_measure_status': ep3_humidity_measure_status,
+                            'hepa_filter_status': hepa_filter_status,
+                            'ep2_temp_measure_status': ep2_temp_measure_status,
                             'device_concentration_status': device_concentration_status,
                             'device_state': device_state})
                     time.sleep(0.5)

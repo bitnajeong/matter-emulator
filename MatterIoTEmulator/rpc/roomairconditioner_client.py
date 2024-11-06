@@ -22,7 +22,7 @@ import time
 import logging
 
 
-class Room_Air_Conditioner_Client(DeviceClient):
+class RoomAirConditionerClient(DeviceClient):
     """
     Room Air Conditioner client class for creating a device.
     """
@@ -36,16 +36,16 @@ class Room_Air_Conditioner_Client(DeviceClient):
         """
         super().__init__(socket_addr)
 
-    def GetMeasuredValue(self):
+    def GetTempValue(self):
         """
         Return Measured value.
         """
-        result = self.rpcs.chip.rpc.RoomAirConditioner.GetMeasuredValue()
+        result = self.rpcs.chip.rpc.RoomAirConditioner.GetTempValue()
         reply = json_format.MessageToDict(
             result[1], roomairconditioner_service_pb2.TemperatureSensorRoomAir())
         return {'status': result[0].name, 'reply': reply}
 
-    def SetMeasuredValue(self, data):
+    def SetTempValue(self, data):
         """
         Set Measured state and return the result.
 
@@ -54,7 +54,7 @@ class Room_Air_Conditioner_Client(DeviceClient):
         """
         arg = roomairconditioner_service_pb2.TemperatureSensorRoomAir()
         json_format.ParseDict(data, arg)
-        result = self.rpcs.chip.rpc.RoomAirConditioner.SetMeasuredValue(arg)
+        result = self.rpcs.chip.rpc.RoomAirConditioner.SetTempValue(arg)
         reply = json_format.MessageToDict(result[1])
         return {'status': result[0].name, 'reply': reply}
 
@@ -107,5 +107,5 @@ class Room_Air_Conditioner_Client(DeviceClient):
 
 if __name__ == '__main__':
     # This is the sample only
-    client = Room_Air_Conditioner_Client()
+    client = RoomAirConditionerClient()
     time.sleep()

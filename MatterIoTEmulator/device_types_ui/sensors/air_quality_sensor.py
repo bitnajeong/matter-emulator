@@ -513,8 +513,8 @@ class AirQualitySensor(BaseDeviceUI):
 
             if 0 <= value_temp <= 10000:
                 data = {
-                    'TemperatureMeasurement': {
-                        'mMeasuredValue': value_temp}}
+                    'temperatureMeasurement': {
+                        'measuredValue': value_temp}}
                 self.client.set(data)
                 self.is_edit_temp = True
             else:
@@ -523,8 +523,8 @@ class AirQualitySensor(BaseDeviceUI):
 
             if 0 <= value_hum <= 10000:
                 data = {
-                    'RelativeHumidityMeasurement': {
-                        'mMeasuredValue': value_hum}}
+                    'relativeHumidityMeasurement': {
+                        'measuredValue': value_hum}}
                 self.client.set(data)
                 self.is_edit_hum = True
             else:
@@ -533,8 +533,8 @@ class AirQualitySensor(BaseDeviceUI):
 
             if 0 <= value_pm25 <= 300:
                 data = {
-                    'PM25ConcentrationMeasurement': {
-                        'mMeasuredValue': value_pm25}}
+                    'pm25ConcentrationMeasurement': {
+                        'measuredValue': value_pm25}}
                 self.client.set(data)
                 self.is_edit_pm25 = True
             else:
@@ -542,7 +542,8 @@ class AirQualitySensor(BaseDeviceUI):
                 self.line_edit_pm25.setText(str(self.pm25))
 
             if 0 <= value_co <= 300:
-                data = {'CO': {'mMeasuredValue': value_co}}
+                data = {'carbonMonoxideConcentrationMeasurement':
+                            {'measuredValue': value_co}}
                 self.client.set(data)
                 self.is_edit_co = True
             else:
@@ -550,7 +551,8 @@ class AirQualitySensor(BaseDeviceUI):
                 self.line_edit_co.setText(str(self.co))
 
             if 0 <= value_co2 <= 300:
-                data = {'CO2': {'mMeasuredValue': value_co2}}
+                data = {'carbonDioxideConcentrationMeasurement':
+                            {'measuredValue': value_co2}}
                 self.client.set(data)
                 self.is_edit_co2 = True
             else:
@@ -558,14 +560,16 @@ class AirQualitySensor(BaseDeviceUI):
                 self.line_edit_co2.setText(str(self.co2))
 
             if 0 <= value_no2 <= 300:
-                data = {'NO2': {'mMeasuredValue': value_no2}}
+                data = {'nitrogenDioxideConcentrationMeasurement':
+                            {'measuredValue': value_no2}}
                 self.client.set(data)
                 self.is_edit_no2 = True
             else:
                 self.message_box(ER_NO2)
                 self.line_edit_no2.setText(str(self.no2))
             if 0 <= value_o3 <= 300:
-                data = {'O3': {'mMeasuredValue': value_o3}}
+                data = {'ozoneConcentrationMeasurement':
+                            {'measuredValue': value_o3}}
                 self.client.set(data)
                 self.is_edit_o3 = True
             else:
@@ -573,8 +577,8 @@ class AirQualitySensor(BaseDeviceUI):
                 self.line_edit_o3.setText(str(self.o3))
             if 0 <= value_ch2o <= 300:
                 data = {
-                    'FormaldehydeConcentrationMeasurement': {
-                        'mMeasuredValue': value_ch2o}}
+                    'formaldehydeConcentrationMeasurement': {
+                        'measuredValue': value_ch2o}}
                 self.client.set(data)
                 self.is_edit_ch2o = True
             else:
@@ -582,8 +586,8 @@ class AirQualitySensor(BaseDeviceUI):
                 self.line_edit_ch2o.setText(str(self.ch2o))
             if 0 <= value_pm1 <= 300:
                 data = {
-                    'PM1ConcentrationMeasurement': {
-                        'mMeasuredValue': value_pm1}}
+                    'pm1ConcentrationMeasurement': {
+                        'measuredValue': value_pm1}}
                 self.client.set(data)
                 self.is_edit_pm1 = True
             else:
@@ -591,8 +595,8 @@ class AirQualitySensor(BaseDeviceUI):
                 self.line_edit_pm1.setText(str(self.pm1))
             if 0 <= value_pm10 <= 300:
                 data = {
-                    'PM10ConcentrationMeasurement': {
-                        'mMeasuredValue': value_pm10}}
+                    'pm10ConcentrationMeasurement': {
+                        'measuredValue': value_pm10}}
                 self.client.set(data)
                 self.is_edit_pm10 = True
             else:
@@ -600,8 +604,8 @@ class AirQualitySensor(BaseDeviceUI):
                 self.line_edit_pm10.setText(str(self.pm10))
             if 0 <= value_rn <= 300:
                 data = {
-                    'RadonConcentrationMeasurement': {
-                        'mMeasuredValue': value_rn}}
+                    'radonConcentrationMeasurement': {
+                        'measuredValue': value_rn}}
                 self.client.set(data)
                 self.is_edit_rn = True
             else:
@@ -610,8 +614,8 @@ class AirQualitySensor(BaseDeviceUI):
 
             if 0 <= value_tvoc <= 300:
                 data = {
-                    'TotalVolatileOrganicCompoundsConcentrationMeasurement': {
-                        'mMeasuredValue': value_tvoc}}
+                    'totalVolatileOrganicCompoundsConcentrationMeasurement': {
+                        'measuredValue': value_tvoc}}
                 self.client.set(data)
                 self.is_edit_tvoc = True
             else:
@@ -641,20 +645,20 @@ class AirQualitySensor(BaseDeviceUI):
         """
         try:
             data = {
-                'AirQuality': {'mAirQuality': GOOD},
-                'RelativeHumidityMeasurement': {'mMeasuredValue': 4000},
-                'TemperatureMeasurement': {'mMeasuredValue': 2800},
-                'PM25ConcentrationMeasurement': {'mMeasuredValue': 20},
-                'CO': {'mMeasuredValue': 5.0},
-                'CO2': {'mMeasuredValue': 5.0},
-                'NO2': {'mMeasuredValue': 5.0},
-                'O3': {'mMeasuredValue': 5.0},
-                'FormaldehydeConcentrationMeasurement': {'mMeasuredValue': 5.0},
-                'PM1ConcentrationMeasurement': {'mMeasuredValue': 5.0},
-                'PM10ConcentrationMeasurement': {'mMeasuredValue': 5.0},
-                'RadonConcentrationMeasurement': {'mMeasuredValue': 5.0},
-                'TotalVolatileOrganicCompoundsConcentrationMeasurement': {
-                    'mMeasuredValue': 5.0}
+                'airQuality': {'airQuality': GOOD},
+                'relativeHumidityMeasurement': {'measuredValue': 4000},
+                'temperatureMeasurement': {'measuredValue': 2800},
+                'pm25ConcentrationMeasurement': {'measuredValue': 20},
+                'carbonMonoxideConcentrationMeasurement': {'measuredValue': 5.0},
+                'carbonDioxideConcentrationMeasurement': {'measuredValue': 5.0},
+                'nitrogenDioxideConcentrationMeasurement': {'measuredValue': 5.0},
+                'ozoneConcentrationMeasurement': {'measuredValue': 5.0},
+                'formaldehydeConcentrationMeasurement': {'measuredValue': 5.0},
+                'pm1ConcentrationMeasurement': {'measuredValue': 5.0},
+                'pm10ConcentrationMeasurement': {'measuredValue': 5.0},
+                'radonConcentrationMeasurement': {'measuredValue': 5.0},
+                'totalVolatileOrganicCompoundsConcentrationMeasurement': {
+                    'measuredValue': 5.0}
                 }
             self.client.set(data)
         except Exception as e:
@@ -667,25 +671,25 @@ class AirQualitySensor(BaseDeviceUI):
         :param pm25: Value of pm2.5 measurement
         """
         if 0 < self.pm25 <= 50:
-            data_air = {'AirQuality': {'mAirQuality': GOOD}}
+            data_air = {'airQuality': {'airQuality': GOOD}}
             self.client.set(data_air)
         elif 50 < self.pm25 <= 100:
-            data_air = {'AirQuality': {'mAirQuality': FAIR}}
+            data_air = {'airQuality': {'airQuality': FAIR}}
             self.client.set(data_air)
         elif 100 < self.pm25 <= 150:
-            data_air = {'AirQuality': {'mAirQuality': MODERATE}}
+            data_air = {'airQuality': {'airQuality': MODERATE}}
             self.client.set(data_air)
         elif 150 < self.pm25 <= 200:
-            data_air = {'AirQuality': {'mAirQuality': POOR}}
+            data_air = {'airQuality': {'airQuality': POOR}}
             self.client.set(data_air)
         elif 200 < self.pm25 <= 250:
-            data_air = {'AirQuality': {'mAirQuality': VERY_POOR}}
+            data_air = {'airQuality': {'airQuality': VERY_POOR}}
             self.client.set(data_air)
         elif 250 < self.pm25 <= 300:
-            data_air = {'AirQuality': {'mAirQuality': EXTREMELY_POOR}}
+            data_air = {'airQuality': {'airQuality': EXTREMELY_POOR}}
             self.client.set(data_air)
         else:
-            data_air = {'AirQuality': {'mAirQuality': UNKNOWN}}
+            data_air = {'airQuality': {'airQuality': UNKNOWN}}
             self.client.set(data_air)
 
     def on_device_status_changed(self, result):
@@ -702,13 +706,12 @@ class AirQualitySensor(BaseDeviceUI):
             self.parent.update_device_state(device_state)
             self.pm25 = round(
                 float(
-                    device_status['reply']['PM25ConcentrationMeasurement']['mMeasuredValue']),
-                2)
+                    device_status['reply']['pm25ConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_pm25:
                 self.line_edit_pm25.setText(str(self.pm25))
             self.check_pm25(self.pm25)
             if device_status['status'] == 'OK':
-                self.airquality = device_status['reply']['AirQuality']['mAirQuality']
+                self.airquality = device_status['reply']['airQuality']['airQuality']
                 if self.airquality == UNKNOWN:
                     self.bt_air.setText('Unknown')
                     self.bt_air.setStyleSheet("background-color: green")
@@ -738,58 +741,58 @@ class AirQualitySensor(BaseDeviceUI):
                         "background-color: #996699; color: black")
                 self.bt_air.adjustSize()
             self.temperature = round(
-                (device_status['reply']['TemperatureMeasurement']['mMeasuredValue']) / 100.0, 2)
+                (device_status['reply']['temperatureMeasurement']['measuredValue']) / 100.0, 2)
             if self.is_edit_temp:
                 self.line_edit_temp.setText(str(self.temperature))
 
             self.humidity = round(
-                (device_status['reply']['RelativeHumidityMeasurement']['mMeasuredValue']) / 100.0, 2)
+                (device_status['reply']['relativeHumidityMeasurement']['measuredValue']) / 100.0, 2)
             if self.is_edit_hum:
                 self.line_edit_hum.setText(str(self.humidity))
 
             self.co = round(
                 float(
-                    device_status['reply']['CO']['mMeasuredValue']), 2)
+                    device_status['reply']['carbonMonoxideConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_co:
                 self.line_edit_co.setText(str(self.co))
             self.co2 = round(
                 float(
-                    device_status['reply']['CO2']['mMeasuredValue']), 2)
+                    device_status['reply']['carbonDioxideConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_co2:
                 self.line_edit_co2.setText(str(self.co2))
             self.no2 = round(
                 float(
-                    device_status['reply']['NO2']['mMeasuredValue']), 2)
+                    device_status['reply']['nitrogenDioxideConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_no2:
                 self.line_edit_no2.setText(str(self.no2))
             self.o3 = round(
                 float(
-                    device_status['reply']['O3']['mMeasuredValue']), 2)
+                    device_status['reply']['ozoneConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_o3:
                 self.line_edit_o3.setText(str(self.o3))
             self.ch2o = round(
                 float(
-                    device_status['reply']['FormaldehydeConcentrationMeasurement']['mMeasuredValue']), 2)
+                    device_status['reply']['formaldehydeConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_ch2o:
                 self.line_edit_ch2o.setText(str(self.ch2o))
             self.pm1 = round(
                 float(
-                    device_status['reply']['PM1ConcentrationMeasurement']['mMeasuredValue']), 2)
+                    device_status['reply']['pm1ConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_pm1:
                 self.line_edit_pm1.setText(str(self.pm1))
             self.pm10 = round(
                 float(
-                    device_status['reply']['PM10ConcentrationMeasurement']['mMeasuredValue']), 2)
+                    device_status['reply']['pm10ConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_pm10:
                 self.line_edit_pm10.setText(str(self.pm10))
             self.rn = round(
                 float(
-                    device_status['reply']['RadonConcentrationMeasurement']['mMeasuredValue']), 2)
+                    device_status['reply']['radonConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_rn:
                 self.line_edit_rn.setText(str(self.rn))
             self.tvoc = round(
                 float(
-                    device_status['reply']['TotalVolatileOrganicCompoundsConcentrationMeasurement']['mMeasuredValue']), 2)
+                    device_status['reply']['totalVolatileOrganicCompoundsConcentrationMeasurement']['measuredValue']), 2)
             if self.is_edit_tvoc:
                 self.line_edit_tvoc.setText(str(self.tvoc))
 

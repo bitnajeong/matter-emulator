@@ -75,11 +75,12 @@ class Fan(BaseDeviceUI):
         """
         super().__init__(parent)
         self.fan_mode = 0
+        self.fan_sequence_mode = 2
         self.rock_mode = 0
         self.wind_mode = 0
         self.air_flow = 0
         self.enable_update = True
-        self.cr_feature_type = 6
+        self.cr_feature_type = MULTI_SPEED
 
         # Show icon
         self.lbl_main_icon = QLabel()
@@ -191,15 +192,15 @@ class Fan(BaseDeviceUI):
         """
         try:
             data = {
-                'fanMode': MEDIUM_MODE, 'fanModeSequence': 2, 'FanWind': {
-                    'windSetting': SLEEP_WIND, 'windSupport': True}, 'FanSpeed': {
-                    'speedSetting': 30}, 'FanPercent': {
-                    'percentSetting': 100}, 'FanRock': {
-                    'rockSetting': ROCK_LEFT_RIGHT, 'rockSupport': True}, 'FanAirFlowDirection': {
-                        'airFlowDirection': FORWARD}, 'featureMap': {
-                            'featureMap': self.cr_feature_type}}
+                'fanMode': MEDIUM_MODE,
+                'fanModeSequence': self.fan_sequence_mode,
+                'fanWind': {'windSetting': SLEEP_WIND, 'windSupport': True}, 
+                'fanSpeed': {'speedSetting': 30},
+                'fanPercent': {'percentSetting': 100},
+                'fanRock': {'rockSetting': ROCK_LEFT_RIGHT,'rockSupport': True},
+                'fanAirFlowDirection': {'airFlowDirection': FORWARD},
+                'featureMap': {'featureMap': ALL_FEATURE}}
             self.client.set(data)
-            self.fan_feature_box.setCurrentIndex(self.cr_feature_type)
         except Exception as e:
             self.parent.wkr.connect_status.emit(STT_RPC_INIT_FAIL)
             logging.info("Can not set initial value: " + str(e))
@@ -222,7 +223,7 @@ class Fan(BaseDeviceUI):
             self.rock_mode = ROCK_ROUND
         self.mutex.acquire(timeout=1)
         self.client.set(
-            {'FanRock': {'rockSetting': self.rock_mode, 'rockSupport': True}})
+            {'fanRock': {'rockSetting': self.rock_mode, 'rockSupport': True}})
         self.mutex.release()
 
     def enable_update_mode(self):
@@ -250,7 +251,7 @@ class Fan(BaseDeviceUI):
         logging.info("RPC SET Wind Mode: " + str(index + 1))
         self.mutex.acquire(timeout=1)
         self.client.set(
-            {'FanWind': {'windSetting': (index + 1), 'windSupport': True}})
+            {'fanWind': {'windSetting': (index + 1), 'windSupport': True}})
         self.mutex.release()
 
     def handle_airflow_mode_changed(self, mode):
@@ -260,7 +261,7 @@ class Fan(BaseDeviceUI):
         """
         logging.info("RPC SET Air flow direction Mode: " + str(mode))
         self.mutex.acquire(timeout=1)
-        self.client.set({'FanAirFlowDirection': {'airFlowDirection': mode}})
+        self.client.set({'fanAirFlowDirection': {'airFlowDirection': mode}})
         self.mutex.release()
 
     def fan_feature_changed(self, feature_type):
@@ -334,9 +335,9 @@ class Fan(BaseDeviceUI):
                     self.fan_control_box.setCurrentIndex(self.fan_mode)
 
                 if (self.rock_mode != (
-                        device_status['reply']['FanRock']['rockSetting'])):
+                        device_status['reply']['fanRock']['rockSetting'])):
                     self.rock_mode = (
-                        device_status['reply']['FanRock']['rockSetting'])
+                        device_status['reply']['fanRock']['rockSetting'])
                     index = 0
                     if (ROCK_LEFT_RIGHT == self.rock_mode):
                         index = 0
@@ -347,18 +348,18 @@ class Fan(BaseDeviceUI):
                     self.rock_control_box.setCurrentIndex(index)
 
                 if (self.wind_mode != (
-                        device_status['reply']['FanWind']['windSetting'])):
+                        device_status['reply']['fanWind']['windSetting'])):
                     self.wind_mode = (
-                        device_status['reply']['FanWind']['windSetting'])
+                        device_status['reply']['fanWind']['windSetting'])
                     index = 0
                     if (self.wind_mode > 0):
                         index = self.wind_mode - 1
                     self.wind_control_box.setCurrentIndex(index)
 
                 if (self.air_flow != (
-                        device_status['reply']['FanAirFlowDirection']['airFlowDirection'])):
+                        device_status['reply']['fanAirFlowDirection']['airFlowDirection'])):
                     self.air_flow = (
-                        device_status['reply']['FanAirFlowDirection']['airFlowDirection'])
+                        device_status['reply']['fanAirFlowDirection']['airFlowDirection'])
                     self.airflow_control_box.setCurrentIndex(self.air_flow)
 
                 if (self.cr_feature_type !=
@@ -367,7 +368,7 @@ class Fan(BaseDeviceUI):
                     self.fan_feature_box.setCurrentIndex(self.cr_feature_type)
                     self.check_enable_fan_feature(self.cr_feature_type)
 
-                # speed = (device_status['reply']['FanSpeed']['speedSetting'])
+                # speed = (device_status['reply']['fanSpeed']['speedSetting'])
                 # self.sl_speed_level.setValue(int(speed))
 
         except Exception as e:

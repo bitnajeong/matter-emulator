@@ -40,12 +40,20 @@ INDEX_HEAT = 1
 INDEX_COOL = 2
 INDEX_AUTO = 3
 INDEX_EMERGENCY_HEAT = 4
+INDEX_PRECOOLING    = 5
+INDEX_FANONLY       = 6
+INDEX_DRY           = 7
+INDEX_SLEEP         = 8
 
 MODE_OFF = 0
 MODE_AUTO = 1
 MODE_COOL = 3
 MODE_HEAT = 4
 MODE_EMERGENCY_HEAT = 5
+MODE_PRECOOLING    = 6
+MODE_FANONLY       = 7
+MODE_DRY           = 8
+MODE_SLEEP         = 9
 
 
 class Thermostat(BaseDeviceUI):
@@ -127,6 +135,10 @@ class Thermostat(BaseDeviceUI):
         self.cb_mode.addItem('Cool')
         self.cb_mode.addItem('Auto')
         self.cb_mode.addItem('EmergencyHeat')
+        self.cb_mode.addItem('PreCooling')
+        self.cb_mode.addItem('FanOnly')
+        self.cb_mode.addItem('Dry')
+        self.cb_mode.addItem('Sleep')
         self.parent.ui.lo_controller.addWidget(self.cb_mode)
         self.cb_mode.currentIndexChanged.connect(
             self.handle_system_mode_changed)
@@ -284,6 +296,18 @@ class Thermostat(BaseDeviceUI):
         elif index == INDEX_EMERGENCY_HEAT:
             self.sl_level_heat.setEnabled(True)
             self.sl_level_cooling.setEnabled(False)
+        elif index == INDEX_PRECOOLING:
+            self.sl_level_cooling.setEnabled(True)
+            self.sl_level_heat.setEnabled(False)
+        elif index == INDEX_FANONLY:
+            self.sl_level_heat.setEnabled(True)
+            self.sl_level_cooling.setEnabled(True)
+        elif index == INDEX_DRY:
+            self.sl_level_heat.setEnabled(True)
+            self.sl_level_cooling.setEnabled(True)
+        elif index == INDEX_SLEEP:
+            self.sl_level_heat.setEnabled(True)
+            self.sl_level_cooling.setEnabled(True)          
 
     def handle_system_mode_changed(self):
         """
@@ -304,6 +328,14 @@ class Thermostat(BaseDeviceUI):
             self.client.set({'systemMode': MODE_AUTO})
         elif index == INDEX_EMERGENCY_HEAT:
             self.client.set({'systemMode': MODE_EMERGENCY_HEAT})
+        elif index == INDEX_PRECOOLING:
+            self.client.set({'systemMode': MODE_PRECOOLING})
+        elif index == INDEX_FANONLY:
+            self.client.set({'systemMode': MODE_FANONLY})
+        elif index == INDEX_DRY:
+            self.client.set({'systemMode': MODE_DRY})
+        elif index == INDEX_SLEEP:
+            self.client.set({'systemMode': MODE_SLEEP})            
         self.mutex.release()
         self.is_on_control = False
 
@@ -382,6 +414,14 @@ class Thermostat(BaseDeviceUI):
                         self.cb_mode.setCurrentIndex(INDEX_AUTO)
                     elif self.systemMode == MODE_EMERGENCY_HEAT:
                         self.cb_mode.setCurrentIndex(INDEX_EMERGENCY_HEAT)
+                    elif self.systemMode == MODE_PRECOOLING:
+                        self.cb_mode.setCurrentIndex(INDEX_PRECOOLING)
+                    elif self.systemMode == MODE_FANONLY:
+                        self.cb_mode.setCurrentIndex(INDEX_FANONLY)
+                    elif self.systemMode == MODE_DRY:
+                        self.cb_mode.setCurrentIndex(INDEX_DRY)
+                    elif self.systemMode == MODE_SLEEP:
+                        self.cb_mode.setCurrentIndex(INDEX_SLEEP)                        
 
                 self.check_system_mode(self.cb_mode.currentIndex())
 

@@ -88,3 +88,4 @@ FLAG_DEVICE_CONFIGURATION = "Device Configuration"
 FLAG_RPC_INIT_DONE = "Starting pw_rpc server"
 
 TEST_MODE = 1
+NUMBER_STORAGE_FILE = 4

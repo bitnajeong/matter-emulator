@@ -23,7 +23,7 @@ import logging
 import threading
 import os
 import time
-from rpc.roomairconditioner_client import Room_Air_Conditioner_Client
+from rpc.roomairconditioner_client import RoomAirConditionerClient
 from ..stoppablethread import UpdateStatusThread
 from ..constants_device import *
 from constants import *
@@ -35,39 +35,47 @@ SOURCE_PATH = os.path.dirname(
             os.path.realpath(__file__))))
 DEVICE_RESOURCE_PATH = os.path.join(SOURCE_PATH, "res/Appliances/")
 
-
+# Thermostat feature
 HEAT = 0
 COOL = 1
 OCCUPANCY = 2
 SCHEDULE_CONFIG = 3
 SET_BACK = 4
-AUTO_MODE = 5
+FAN_MODE_AUTO = 5
 LOCAL_TEM = 6
 ALLFEATURE_THER = 7
-
-OFF_MODE = 0
-LOW_MODE = 1
-MEDIUM_MODE = 2
-HIGH_MODE = 3
-ON_MODE = 4
-AUTO_MODE = 5
-SMART_MODE = 6
 
 INDEX_OFF = 0
 INDEX_HEAT = 1
 INDEX_COOL = 2
 INDEX_AUTO = 3
+INDEX_EMERGENCY_HEAT = 4
+INDEX_PRECOOLING    = 5
+INDEX_FANONLY       = 6
+INDEX_DRY           = 7
+INDEX_SLEEP         = 8
 
-MODE_OFF = 0
-MODE_AUTO = 1
-MODE_COOL = 3
-MODE_HEAT = 4
+# Thermostat system mode
+THER_MODE_OFF = 0
+THER_MODE_AUTO = 1
+THER_MODE_COOL = 3
+THER_MODE_HEAT = 4
+THER_MODE_EMERGENCY_HEAT = 5
+THER_MODE_PRECOOLING    = 6
+THER_MODE_FANONLY       = 7
+THER_MODE_DRY           = 8
+THER_MODE_SLEEP         = 9
 
-FAN_OFF = 0
-FAN_LOW = 1
-FAN_MEDIUM = 2
-FAN_HIGH = 3
+# FanControl MODE
+FAN_MODE_OFF = 0
+FAN_MODE_LOW = 1
+FAN_MODE_MEDIUM = 2
+FAN_MODE_HIGH = 3
+FAN_MODE_ON = 4
+FAN_MODE_AUTO = 5
+FAN_MODE_SMART = 6
 
+# FanControl feature
 MULTI_SPEED = 0
 AUTO = 1
 ROCKING = 2
@@ -76,6 +84,10 @@ STEP = 4
 AIR_FLOW_DIRECTION = 5
 ALL_FEATURE = 6
 
+TEMP_MAX = 10000
+TEMP_MIN = -10000
+HUMID_MAX = 10000
+HUMID_MIN = 0
 
 class RoomAirConditioner(BaseDeviceUI):
     """
@@ -90,6 +102,7 @@ class RoomAirConditioner(BaseDeviceUI):
         """
         super().__init__(parent)
         self.fan_mode = 0
+        self.fan_mode_sequence = 2
         self.ther_mode = 0
         self.temperature = 0
         self.humidity = 0
@@ -212,8 +225,8 @@ class RoomAirConditioner(BaseDeviceUI):
         fan_mode_list = ["OFF", "LOW", "MEDIUM", "HIGH", "ON", "AUTO", "SMART"]
         self.fan_control_box = QComboBox()
         self.fan_control_box.addItems(fan_mode_list)
-        self.fan_control_box.model().item(ON_MODE).setEnabled(False)
-        self.fan_control_box.model().item(SMART_MODE).setEnabled(False)
+        self.fan_control_box.model().item(FAN_MODE_ON).setEnabled(False)
+        self.fan_control_box.model().item(FAN_MODE_SMART).setEnabled(False)
         # Connect the currentIndexChanged signal to a slot
         self.fan_control_box.currentIndexChanged.connect(
             self.handle_fan_mode_changed)
@@ -286,7 +299,7 @@ class RoomAirConditioner(BaseDeviceUI):
         self.parent.ui.lo_controller.addWidget(self.lbl_mod)
 
         # Create a thermostat system mode
-        mod_list = ["Off", "Heat", "Cool", "Auto"]
+        mod_list = ["Off", "Heat", "Cool", "Auto", 'EmergencyHeat', 'PreCooling', 'FanOnly', 'Dry', 'Sleep']
         self.mod_box = QComboBox()
         self.mod_box.addItems(mod_list)
         # Connect the currentIndexChanged signal to a slot
@@ -304,7 +317,7 @@ class RoomAirConditioner(BaseDeviceUI):
         self.parent.ui.lo_controller.addLayout(self.grid_layout)
 
         # Init rpc
-        self.client = Room_Air_Conditioner_Client(self.config)
+        self.client = RoomAirConditionerClient(self.config)
         self.set_initial_value()
         self.start_update_device_status_thread()
         logging.debug("Init Room Air Conditioner done")
@@ -316,7 +329,7 @@ class RoomAirConditioner(BaseDeviceUI):
         """
         logging.info("RPC SET fan feature: " + str(feature_type))
         self.client.SetRoomAirConditionerSensor(
-            {'FanFeatureMap': {'featureMap': feature_type}})
+            {'fanFeatureMap': {'featureMap': feature_type}})
         self.mutex.acquire(timeout=1)
         self.mutex.release()
 
@@ -327,13 +340,13 @@ class RoomAirConditioner(BaseDeviceUI):
         """
         logging.info("RPC SET thermostat feature: " + str(feature_type))
         self.client.SetRoomAirConditionerSensor(
-            {'ThermostatFeatureMap': {'featureMap': feature_type}})
+            {'thermostatFeatureMap': {'featureMap': feature_type}})
         self.client.SetRoomAirConditionerSensor(
             {
-                'Thermostat': {
-                    'systemMode': MODE_OFF,
-                    'OccupiedCoolingSetpoint': self.cooling,
-                    'OccupiedHeatingSetpoint': self.heating}})
+                'thermostat': {
+                    'systemMode': THER_MODE_OFF,
+                    'occupiedCoolingSetpoint': self.cooling,
+                    'occupiedHeatingSetpoint': self.heating}})
         self.mutex.acquire(timeout=1)
         self.mutex.release()
 
@@ -359,9 +372,11 @@ class RoomAirConditioner(BaseDeviceUI):
             value_hum = round(float(self.line_edit_hum.text()) * 100)
             if 0 <= value_temp <= 10000:
                 data_temp = {
-                    'TemperatureMeasurement': {
-                        'MeasuredValue': value_temp}}
-                self.client.SetMeasuredValue(data_temp)
+                    'temperatureMeasurement': {
+                        'tempValue': value_temp,
+                        'maxTempValue': TEMP_MAX,
+                        'minTempValue': TEMP_MIN}}
+                self.client.SetTempValue(data_temp)
                 self.is_edit = True
             else:
                 self.message_box(ER_TEMP)
@@ -369,8 +384,10 @@ class RoomAirConditioner(BaseDeviceUI):
 
             if 0 <= value_hum <= 10000:
                 data_hum = {
-                    'RelativeHumidityMeasurement': {
-                        'HumidityValue': value_hum}}
+                    'relativeHumidityMeasurement': {
+                        'humidityValue': value_hum,
+                        'maxHumidityValue': HUMID_MAX,
+                        'minHumidityValue': HUMID_MIN}}
                 self.client.SetHumiditySensorValue(data_hum)
                 self.is_edit_hum = True
             else:
@@ -409,7 +426,8 @@ class RoomAirConditioner(BaseDeviceUI):
         QTimer.singleShot(1, self.enable_update_mode)
         self.mutex.acquire(timeout=1)
         self.client.SetRoomAirConditionerSensor(
-            {'Fancontrol': {'FanMode': mode}})
+            {'fanControl': {'fanMode': mode,
+                            'fanModeSequence': self.fan_mode_sequence}})
         self.mutex.release()
 
     def handle_thermostat_mode_changed(self, mode):
@@ -418,28 +436,45 @@ class RoomAirConditioner(BaseDeviceUI):
         :param mode {int}: A new mode of thermostat system mode
         """
         logging.info("RPC SET Thermostat System Mode: " + str(mode))
+        self.enable_update = False
+        QTimer.singleShot(1, self.enable_update_mode)
         index = self.mod_box.currentIndex()
         level_cool = self.sl_cool_level.value()
         level_heat = self.sl_heat_level.value()
         self.mutex.acquire(timeout=1)
         self.check_system_mode(index)
         if index == INDEX_OFF:
-            self.ther_mode = MODE_OFF
+            self.ther_mode = THER_MODE_OFF
         elif index == INDEX_HEAT:
-            self.ther_mode = MODE_HEAT
+            self.ther_mode = THER_MODE_HEAT
 
         elif index == INDEX_COOL:
-            self.ther_mode = MODE_COOL
+            self.ther_mode = THER_MODE_COOL
 
         elif index == INDEX_AUTO:
-            self.ther_mode = MODE_AUTO
+            self.ther_mode = THER_MODE_AUTO
+
+        elif index == INDEX_EMERGENCY_HEAT:
+            self.ther_mode = THER_MODE_EMERGENCY_HEAT
+
+        elif index == INDEX_PRECOOLING:
+            self.ther_mode = THER_MODE_PRECOOLING
+
+        elif index == INDEX_FANONLY:
+            self.ther_mode = THER_MODE_FANONLY
+
+        elif index == INDEX_DRY:
+            self.ther_mode = THER_MODE_DRY
+
+        elif index == INDEX_SLEEP:
+            self.ther_mode = THER_MODE_SLEEP          
 
         self.client.SetRoomAirConditionerSensor(
             {
-                'Thermostat': {
+                'thermostat': {
                     'systemMode': self.ther_mode,
-                    'OccupiedCoolingSetpoint': level_cool,
-                    'OccupiedHeatingSetpoint': level_heat}})
+                    'occupiedCoolingSetpoint': level_cool,
+                    'occupiedHeatingSetpoint': level_heat}})
         self.mutex.release()
         self.is_on_control = False
 
@@ -465,31 +500,63 @@ class RoomAirConditioner(BaseDeviceUI):
             self.sl_heat_level.setEnabled(True)
             self.sl_cool_level.setEnabled(True)
 
+        elif index == INDEX_EMERGENCY_HEAT:
+            self.sl_heat_level.setEnabled(True)
+            self.sl_cool_level.setEnabled(False)
+
+        elif index == INDEX_PRECOOLING:
+            self.sl_cool_level.setEnabled(True)
+            self.sl_heat_level.setEnabled(False)
+
+        elif index == INDEX_FANONLY:
+            self.sl_heat_level.setEnabled(True)
+            self.sl_cool_level.setEnabled(True)
+
+        elif index == INDEX_DRY:
+            self.sl_heat_level.setEnabled(True)
+            self.sl_cool_level.setEnabled(True)
+
+        elif index == INDEX_SLEEP:
+            self.sl_heat_level.setEnabled(True)
+            self.sl_cool_level.setEnabled(True)              
+
     def set_initial_value(self):
         """
         Handle set initial value of all supported attributes
         to matter device(backend) through rpc service
         """
         try:
-            data_hum = {'RelativeHumidityMeasurement': {'HumidityValue': 9611}}
-            data_temp = {'TemperatureMeasurement': {'MeasuredValue': 2834}}
+            data_hum = {'relativeHumidityMeasurement': {
+                        'humidityValue': 9611,
+                        'maxHumidityValue': HUMID_MAX,
+                        'minHumidityValue': HUMID_MIN}}
+            data_temp = {'temperatureMeasurement': {
+                        'tempValue': 2834,
+                        'maxTempValue': TEMP_MAX,
+                        'minTempValue': TEMP_MIN}}
             data_room = {
-                'OnOff': {
-                    'OnOff': True},
-                'Thermostat': {
-                    'OccupiedHeatingSetpoint': 2125,
-                    'OccupiedCoolingSetpoint': 2776,
-                    'systemMode': MODE_OFF},
-                'Fancontrol': {
-                    'FanMode': FAN_MEDIUM,
-                    'SpeedSetting': 100},
-                'FanFeatureMap': {
-                    'featureMap': 1},
-                'ThermostatFeatureMap': {
+                'onOff': {
+                    'onOff': True},
+                'thermostat': {
+                    'occupiedHeatingSetpoint': 2125,
+                    'occupiedCoolingSetpoint': 2776,
+                    'systemMode': THER_MODE_OFF},
+                'fanControl':{
+                    'fanMode': FAN_MODE_OFF,
+                    'fanModeSequence': 2,
+                    'fanWind': {'windSetting': 0, 'windSupport': True}, 
+                    'fanSpeed': {'speedSetting': 80},
+                    'fanPercent': {'percentSetting': 100},
+                    'fanRock': {'rockSetting': 0,'rockSupport': True},
+                    'fanAirFlowDirection': {'airFlowDirection': 0}
+                },
+                'fanFeatureMap': {
+                    'featureMap': ALL_FEATURE},
+                'thermostatFeatureMap': {
                     'featureMap': ALLFEATURE_THER}}
             self.client.SetRoomAirConditionerSensor(data_room)
             self.client.SetHumiditySensorValue(data_hum)
-            self.client.SetMeasuredValue(data_temp)
+            self.client.SetTempValue(data_temp)
         except Exception as e:
             self.parent.wkr.connect_status.emit(STT_RPC_INIT_FAIL)
             logging.info("Can not set initial value: " + str(e))
@@ -525,7 +592,7 @@ class RoomAirConditioner(BaseDeviceUI):
             self.thermostat_feature_box.setEnabled(False)
             self.fan_feature_box.setEnabled(False)
             self.client.SetRoomAirConditionerSensor(
-                {'Thermostat': {'systemMode': MODE_OFF}})
+                {'thermostat': {'systemMode': THER_MODE_OFF}})
 
     def handle_onoff_changed(self, data):
         """
@@ -537,11 +604,11 @@ class RoomAirConditioner(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         if data == 0:
             self.client.SetRoomAirConditionerSensor(
-                {'OnOff': {'OnOff': False}})
+                {'onOff': {'onOff': False}})
             self.is_stop_clicked = True
             self.check_onoff(False)
         else:
-            self.client.SetRoomAirConditionerSensor({'OnOff': {'OnOff': True}})
+            self.client.SetRoomAirConditionerSensor({'onOff': {'onOff': True}})
             self.is_stop_clicked = False
             self.check_onoff(True)
         self.mutex.release()
@@ -562,14 +629,12 @@ class RoomAirConditioner(BaseDeviceUI):
 
         self.client.SetRoomAirConditionerSensor(
             {
-                'OnOff': {
-                    'OnOff': self.on_off},
-                'Fancontrol': {
-                    'FanMode': self.fan_mode},
-                'Thermostat': {
+                'onOff': {
+                    'onOff': self.on_off},
+                'thermostat': {
                     'systemMode': self.ther_mode,
-                    'OccupiedCoolingSetpoint': level_cool,
-                    'OccupiedHeatingSetpoint': level_heat}})
+                    'occupiedCoolingSetpoint': level_cool,
+                    'occupiedHeatingSetpoint': level_heat}})
         self.mutex.release()
         self.is_on_control = False
 
@@ -589,14 +654,12 @@ class RoomAirConditioner(BaseDeviceUI):
 
         self.client.SetRoomAirConditionerSensor(
             {
-                'OnOff': {
-                    'OnOff': self.on_off},
-                'Fancontrol': {
-                    'FanMode': self.fan_mode},
-                'Thermostat': {
+                'onOff': {
+                    'onOff': self.on_off},
+                'thermostat': {
                     'systemMode': self.ther_mode,
-                    'OccupiedCoolingSetpoint': level_cool,
-                    'OccupiedHeatingSetpoint': level_heat}})
+                    'occupiedCoolingSetpoint': level_cool,
+                    'occupiedHeatingSetpoint': level_heat}})
         self.mutex.release()
         self.is_on_control = False
 
@@ -607,15 +670,15 @@ class RoomAirConditioner(BaseDeviceUI):
         :param feature_type {int}: A feature map value of fan feature map
         """
         self.fan_control_box.setEnabled(False)
-        self.fan_control_box.model().item(AUTO_MODE).setEnabled(False)
+        self.fan_control_box.model().item(FAN_MODE_AUTO).setEnabled(False)
         if ((feature_type == MULTI_SPEED) or (
                 feature_type == AUTO) or (feature_type == STEP)):
             self.fan_control_box.setEnabled(True)
             if (feature_type == AUTO):
-                self.fan_control_box.model().item(AUTO_MODE).setEnabled(True)
+                self.fan_control_box.model().item(FAN_MODE_AUTO).setEnabled(True)
         elif (feature_type == ALL_FEATURE):
             self.fan_control_box.setEnabled(True)
-            self.fan_control_box.model().item(AUTO_MODE).setEnabled(True)
+            self.fan_control_box.model().item(FAN_MODE_AUTO).setEnabled(True)
 
     def check_enable_feature_thermostat(self, feature_type):
         """
@@ -627,18 +690,38 @@ class RoomAirConditioner(BaseDeviceUI):
             self.mod_box.model().item(INDEX_COOL).setEnabled(False)
             self.mod_box.model().item(INDEX_AUTO).setEnabled(False)
             self.mod_box.model().item(INDEX_HEAT).setEnabled(True)
+            self.mod_box.model().item(INDEX_EMERGENCY_HEAT).setEnabled(True)
+            self.mod_box.model().item(INDEX_PRECOOLING).setEnabled(False)
+            self.mod_box.model().item(INDEX_FANONLY).setEnabled(False)
+            self.mod_box.model().item(INDEX_DRY).setEnabled(False)
+            self.mod_box.model().item(INDEX_SLEEP).setEnabled(False)                        
         elif (feature_type == COOL):
             self.mod_box.model().item(INDEX_HEAT).setEnabled(False)
             self.mod_box.model().item(INDEX_AUTO).setEnabled(False)
             self.mod_box.model().item(INDEX_COOL).setEnabled(True)
-        elif (feature_type == AUTO_MODE):
+            self.mod_box.model().item(INDEX_EMERGENCY_HEAT).setEnabled(False)
+            self.mod_box.model().item(INDEX_PRECOOLING).setEnabled(True)
+            self.mod_box.model().item(INDEX_FANONLY).setEnabled(False)
+            self.mod_box.model().item(INDEX_DRY).setEnabled(False)
+            self.mod_box.model().item(INDEX_SLEEP).setEnabled(False)             
+        elif (feature_type == FAN_MODE_AUTO):
             self.mod_box.model().item(INDEX_HEAT).setEnabled(False)
             self.mod_box.model().item(INDEX_AUTO).setEnabled(True)
             self.mod_box.model().item(INDEX_COOL).setEnabled(False)
+            self.mod_box.model().item(INDEX_EMERGENCY_HEAT).setEnabled(False)
+            self.mod_box.model().item(INDEX_PRECOOLING).setEnabled(False)
+            self.mod_box.model().item(INDEX_FANONLY).setEnabled(False)
+            self.mod_box.model().item(INDEX_DRY).setEnabled(False)
+            self.mod_box.model().item(INDEX_SLEEP).setEnabled(False)            
         elif (feature_type == ALLFEATURE_THER):
             self.mod_box.model().item(INDEX_HEAT).setEnabled(True)
             self.mod_box.model().item(INDEX_AUTO).setEnabled(True)
             self.mod_box.model().item(INDEX_COOL).setEnabled(True)
+            self.mod_box.model().item(INDEX_EMERGENCY_HEAT).setEnabled(True)
+            self.mod_box.model().item(INDEX_PRECOOLING).setEnabled(True)
+            self.mod_box.model().item(INDEX_FANONLY).setEnabled(True)
+            self.mod_box.model().item(INDEX_DRY).setEnabled(True)
+            self.mod_box.model().item(INDEX_SLEEP).setEnabled(True)              
 
     def on_device_status_changed(self, result):
         """
@@ -655,32 +738,32 @@ class RoomAirConditioner(BaseDeviceUI):
             device_state = result['device_state']
             self.parent.update_device_state(device_state)
             if device_room_status['status'] == 'OK':
-                self.heating = device_room_status['reply']['Thermostat']['OccupiedHeatingSetpoint']
+                self.heating = device_room_status['reply']['thermostat']['occupiedHeatingSetpoint']
                 self.sl_heat_level.setValue(self.heating)
-                self.cooling = device_room_status['reply']['Thermostat']['OccupiedCoolingSetpoint']
+                self.cooling = device_room_status['reply']['thermostat']['occupiedCoolingSetpoint']
                 self.sl_cool_level.setValue(self.cooling)
 
                 if self.feature_thermostat != device_room_status[
-                        'reply']['ThermostatFeatureMap']['featureMap']:
+                        'reply']['thermostatFeatureMap']['featureMap']:
                     self.feature_thermostat = device_room_status[
-                        'reply']['ThermostatFeatureMap']['featureMap']
+                        'reply']['thermostatFeatureMap']['featureMap']
                     self.thermostat_feature_box.setCurrentIndex(
                         self.feature_thermostat)
                     self.check_enable_feature_thermostat(
                         self.feature_thermostat)
 
-                if self.feature_fan != device_room_status['reply']['FanFeatureMap']['featureMap']:
-                    self.feature_fan = device_room_status['reply']['FanFeatureMap']['featureMap']
+                if self.feature_fan != device_room_status['reply']['fanFeatureMap']['featureMap']:
+                    self.feature_fan = device_room_status['reply']['fanFeatureMap']['featureMap']
                     self.fan_feature_box.setCurrentIndex(self.feature_fan)
                     self.check_enable_fan_feature(self.feature_fan)
 
                 if (self.fan_mode !=
-                        device_room_status['reply']['Fancontrol']['FanMode']):
-                    self.fan_mode = device_room_status['reply']['Fancontrol']['FanMode']
+                        device_room_status['reply']['fanControl']['fanMode']):
+                    self.fan_mode = device_room_status['reply']['fanControl']['fanMode']
                     if self.enable_update:
                         self.fan_control_box.setCurrentIndex(self.fan_mode)
-                if self.on_off != device_room_status['reply']['OnOff']['OnOff']:
-                    self.on_off = device_room_status['reply']['OnOff']['OnOff']
+                if self.on_off != device_room_status['reply']['onOff']['onOff']:
+                    self.on_off = device_room_status['reply']['onOff']['onOff']
                     if self.on_off:
                         self.lbl_main_status.setText('On')
                         self.sw.setCheckState(Qt.Checked)
@@ -689,23 +772,34 @@ class RoomAirConditioner(BaseDeviceUI):
                         self.sw.setCheckState(Qt.Unchecked)
 
                 if (self.ther_mode !=
-                        device_room_status['reply']['Thermostat']['systemMode']):
-                    self.ther_mode = device_room_status['reply']['Thermostat']['systemMode']
-                    if self.ther_mode == MODE_OFF:
-                        self.mod_box.setCurrentIndex(INDEX_OFF)
-                    elif self.ther_mode == MODE_HEAT:
-                        self.mod_box.setCurrentIndex(INDEX_HEAT)
-                    elif self.ther_mode == MODE_COOL:
-                        self.mod_box.setCurrentIndex(INDEX_COOL)
-                    elif self.ther_mode == MODE_AUTO:
-                        self.mod_box.setCurrentIndex(INDEX_AUTO)
+                        device_room_status['reply']['thermostat']['systemMode']):
+                    self.ther_mode = device_room_status['reply']['thermostat']['systemMode']
+                    if self.enable_update:
+                        if self.ther_mode == THER_MODE_OFF:
+                            self.mod_box.setCurrentIndex(INDEX_OFF)
+                        elif self.ther_mode == THER_MODE_HEAT:
+                            self.mod_box.setCurrentIndex(INDEX_HEAT)
+                        elif self.ther_mode == THER_MODE_COOL:
+                            self.mod_box.setCurrentIndex(INDEX_COOL)
+                        elif self.ther_mode == THER_MODE_AUTO:
+                            self.mod_box.setCurrentIndex(INDEX_AUTO)
+                        elif self.ther_mode == THER_MODE_EMERGENCY_HEAT:
+                            self.mod_box.setCurrentIndex(INDEX_EMERGENCY_HEAT)
+                        elif self.ther_mode == THER_MODE_PRECOOLING:
+                            self.mod_box.setCurrentIndex(INDEX_PRECOOLING)
+                        elif self.ther_mode == THER_MODE_FANONLY:
+                            self.mod_box.setCurrentIndex(INDEX_FANONLY)
+                        elif self.ther_mode == THER_MODE_DRY:
+                            self.mod_box.setCurrentIndex(INDEX_DRY)
+                        elif self.ther_mode == THER_MODE_SLEEP:
+                            self.mod_box.setCurrentIndex(INDEX_SLEEP)                                                
 
                 self.check_system_mode(self.mod_box.currentIndex())
 
             if device_tem_status['status'] == 'OK':
                 self.temperature = round(
                     float(
-                        device_tem_status['reply']['TemperatureMeasurement']['MeasuredValue'] /
+                        device_tem_status['reply']['temperatureMeasurement']['tempValue'] /
                         100),
                     2)
                 if self.is_edit:
@@ -713,7 +807,7 @@ class RoomAirConditioner(BaseDeviceUI):
             if device_hum_status['status'] == 'OK':
                 self.humidity = round(
                     float(
-                        device_hum_status['reply']['RelativeHumidityMeasurement']['HumidityValue'] /
+                        device_hum_status['reply']['relativeHumidityMeasurement']['humidityValue'] /
                         100),
                     2)
                 if self.is_edit_hum:
@@ -734,7 +828,7 @@ class RoomAirConditioner(BaseDeviceUI):
                     if not self.is_on_control:
                         self.mutex.acquire(timeout=1)
                         device_hum_status = self.client.GetHumiditySensorValue()
-                        device_tem_status = self.client.GetMeasuredValue()
+                        device_tem_status = self.client.GetTempValue()
                         device_room_status = self.client.GetRoomAirConditionerSensor()
                         device_state = self.client.get_device_state()
                         self.mutex.release()

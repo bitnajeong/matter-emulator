@@ -74,6 +74,11 @@ TEMP_NUMBER_FEATURE = 0
 TEMP_LEVEL_FEATURE = 1
 TEMP_STEP_FEATURE = 2
 
+NONE = 0
+NORMAL = 1
+EXTRA = 2
+MAX = 3
+
 
 class LaundryWasher(BaseDeviceUI):
     """
@@ -87,10 +92,10 @@ class LaundryWasher(BaseDeviceUI):
         :param parent: An UI object load LaundryWasher device UI controller.
         """
         super().__init__(parent)
-        self.cr_mode = NORMAL
+        self.cr_mode = WHITES
         self.cr_state = STOPPED
-        self.cr_phase = WASHING
-        self.cr_speed = 0
+        self.cr_phase = COOLING
+        self.cr_speed = MEDIUM
         self.cr_error_state = NO_ERROR
         self.cr_opState_index = STOP
         self.temperature = 0
@@ -301,7 +306,7 @@ class LaundryWasher(BaseDeviceUI):
         :param feature_mode: Value feature map of laundry control cluster
         """
         logging.info("RPC SET Laundry control feature mode: " + str(mode))
-        self.client.set({'LaundryControlFeature': {
+        self.client.set({'laundryControlFeature': {
                         'laundryControlFeature': mode}})
         self.mutex.acquire(timeout=1)
         if mode == SPIN_FEATURE:
@@ -322,7 +327,7 @@ class LaundryWasher(BaseDeviceUI):
         self.number_temp = False
         self.select_temp_level = False
         self.mutex.acquire(timeout=1)
-        self.client.set({'TempControlFeature': {'tempFeature': feature_mode}})
+        self.client.set({'tempControlFeature': {'tempFeature': feature_mode}})
         self.mutex.release()
         if feature_mode == TEMP_NUMBER_FEATURE:
             self.number_temp = True
@@ -403,7 +408,7 @@ class LaundryWasher(BaseDeviceUI):
             cr_step_value = round(int(self.line_edit_step.text()) * 100)
             if 0 <= cr_step_value <= 10000:
                 data = {
-                    'TemperatureControl': {
+                    'temperatureControl': {
                         'temperatureValue': self.temperature,
                         'step': cr_step_value,
                         'selectedTemperatureLevel': self.select_temp}}
@@ -430,7 +435,7 @@ class LaundryWasher(BaseDeviceUI):
         """
         logging.info("RPC SET number of Rinse: " + str(rinse_mode))
         self.mutex.acquire(timeout=1)
-        self.client.set({'NumberOfRinses': {'numberOfRinses': rinse_mode}})
+        self.client.set({'numberOfRinses': {'numberOfRinses': rinse_mode}})
         self.mutex.release()
 
     def handle_level_box_changed(self, level_mode):
@@ -442,7 +447,7 @@ class LaundryWasher(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         self.client.set(
             {
-                'TemperatureControl': {
+                'temperatureControl': {
                     'temperatureValue': self.temperature,
                     'step': self.cr_step,
                     'selectedTemperatureLevel': level_mode}})
@@ -467,6 +472,7 @@ class LaundryWasher(BaseDeviceUI):
             self.laundry_timer.start(1000)
             self.laundry_timer.timeout.connect(self.update_timer)
             self.countdown_time = countdown_time
+
 
     def get_timer_mode(self):
         """Set timer interval corressponding to laundrywasher mode"""
@@ -495,7 +501,8 @@ class LaundryWasher(BaseDeviceUI):
                               cr_state=None,
                               cr_opState_index=None,
                               cr_phase=None,
-                              cr_error_state=None):
+                              cr_error_state=None,
+                              cr_countdown_time=None):
         """
         Set value for all attributes of operational state cluster
         :param cr_state: New value of operation state attribute
@@ -506,11 +513,12 @@ class LaundryWasher(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         self.client.set(
             {
-                'LaundryOperationalState': {
+                'laundryOperationalState': {
                     'operationalState': cr_state if cr_state is not None else self.cr_state,
                     'currentPhase': cr_phase if cr_phase is not None else self.cr_phase,
                     'crOpStateIndex': cr_opState_index if cr_opState_index is not None else self.cr_opState_index,
-                    'errState': cr_error_state if cr_error_state is not None else self.cr_error_state}})
+                    'errState': cr_error_state if cr_error_state is not None else self.cr_error_state,
+                    'countdownTime': cr_countdown_time if cr_countdown_time is not None else self.countdown_time}})
         self.mutex.release()
 
     def update_timer(self):
@@ -518,6 +526,7 @@ class LaundryWasher(BaseDeviceUI):
         Handle set attributes value to matter device(backend)
         through rpc service when timer timout
         """
+        self.set_operational_state()
         self.lbl_time.setText(
             "In processing...{}s".format(
                 self.countdown_time))
@@ -542,7 +551,8 @@ class LaundryWasher(BaseDeviceUI):
             if self.countdown_time == self.time_cooling:
                 self.set_operational_state(cr_phase=COOLING)
 
-        self.countdown_time -= 1
+        if self.countdown_time > 0:
+            self.countdown_time-= 1
 
     def notify_process_stopped(self):
         """Set label to notice process stopped"""
@@ -557,7 +567,7 @@ class LaundryWasher(BaseDeviceUI):
         self.get_timer_mode()
         self.destroy_timer_laundry()
         self.mutex.acquire(timeout=1)
-        self.client.set({'LaundryMode': {'laundryMode': mode}})
+        self.client.set({'laundryMode': {'currentMode': mode}})
         self.mutex.release()
 
     def handle_spin_mode_changed(self, mode):
@@ -567,7 +577,7 @@ class LaundryWasher(BaseDeviceUI):
         """
         logging.info("RPC SET Laundry Control Spin Mode: " + str(mode))
         self.mutex.acquire(timeout=1)
-        self.client.set({'SpinSpeed': {'spinSpeed': mode}})
+        self.client.set({'spinSpeed': {'spinSpeed': mode}})
         self.mutex.release()
 
     def handle_operational_changed(self, mode):
@@ -575,10 +585,11 @@ class LaundryWasher(BaseDeviceUI):
         Handle operational state change
         :param mode {int}: A new mode of operational state
         """
-        # logging.info("RPC SET Laundry Washer Operational State: " + str(mode))
+        logging.info("RPC SET Laundry Washer Operational State: " + str(mode))
         if mode == STOP:
             self.destroy_timer_laundry()
-            self.set_operational_state(cr_state=STOPPED, cr_opState_index=STOP)
+            self.countdown_time = 0
+            self.set_operational_state(cr_state=STOPPED, cr_opState_index=STOP, cr_phase=COOLING)
             statusTimer = Timer(2, self.notify_process_stopped)
             statusTimer.start()
 
@@ -630,11 +641,11 @@ class LaundryWasher(BaseDeviceUI):
             self.on_off = False
         self.client.set(
             {
-                'TemperatureControl': {
+                'temperatureControl': {
                     'temperatureValue': temp,
                     'step': self.cr_step,
                     'selectedTemperatureLevel': self.select_temp},
-                'OnOffControl': {
+                'onOff': {
                     'onOff': self.on_off}})
         self.is_on_control = False
 
@@ -645,30 +656,31 @@ class LaundryWasher(BaseDeviceUI):
         """
         try:
             data_2 = {
-                'SpinSpeed': {
-                    'spinSpeed': MEDIUM},
-                'LaundryMode': {
-                    'laundryMode': HEAVY},
-                'LaundryModeFeature': {
+                'spinSpeed': {
+                    'spinSpeed': OFF},
+                'laundryMode': {
+                    'currentMode': DELICATE},
+                'laundryModeFeature': {
                     'modeFeature': 1},
-                'OnOffControl': {
+                'onOff': {
                     'onOff': True},
-                'TemperatureControl': {
+                'temperatureControl': {
                     'temperatureValue': 2500,
-                    'step': 5,
-                    'selectedTemperatureLevel': 2},
-                'LaundryOperationalState': {
-                    'currentPhase': SPINNING,
+                    'step': 1,
+                    'selectedTemperatureLevel': 1},
+                'laundryOperationalState': {
+                    'countdownTime': 0,
+                    'currentPhase': WASHING,
                     'operationalState': STOPPED,
-                    'crOpStateIndex': self.cr_opState_index,
-                    'errState': self.cr_error_state},
-                'NumberOfRinses': {
-                    'numberOfRinses': 3},
-                'TempControlFeature': {
-                    'tempFeature': 0},
-                'LaundryControlFeature': {
+                    'crOpStateIndex': STOP,
+                    'errState': NO_ERROR},
+                'numberOfRinses': {
+                    'numberOfRinses': MAX},
+                'tempControlFeature': {
+                    'tempFeature': TEMP_NUMBER_FEATURE},
+                'laundryControlFeature': {
                     'laundryControlFeature': RINSE_FEATURE}}
-            data_1 = {'LaundryOperationalState': {'phaseList': [0, 1, 2]}}
+            data_1 = {'laundryOperationalState': {'phaseList': [0, 1, 2]}}
             self.client.set(data_1)
             self.client.set(data_2)
             self.lbl_operational_mod.setText('Operational State : Stopped')
@@ -716,10 +728,10 @@ class LaundryWasher(BaseDeviceUI):
         logging.info("RPC SET On/Off: " + str(data))
         self.mutex.acquire(timeout=1)
         if data == 0:
-            self.client.set({'OnOffControl': {'onOff': False}})
+            self.client.set({'onOff': {'onOff': False}})
             self.check_onoff(False)
         else:
-            self.client.set({'OnOffControl': {'onOff': True}})
+            self.client.set({'onOff': {'onOff': True}})
             self.check_onoff(True)
         self.mutex.release()
 
@@ -737,20 +749,22 @@ class LaundryWasher(BaseDeviceUI):
             self.parent.update_device_state(device_state)
             if device_status['status'] == 'OK':
                 if (self.cr_mode !=
-                        device_status['reply']['LaundryMode']['laundryMode']):
-                    self.cr_mode = device_status['reply']['LaundryMode']['laundryMode']
+                        device_status['reply']['laundryMode']['currentMode']):
+                    self.cr_mode = device_status['reply']['laundryMode']['currentMode']
                     self.mod_box.setCurrentIndex(self.cr_mode)
 
                 self.temperature = (
-                    device_status['reply']['TemperatureControl']['temperatureValue'])
+                    device_status['reply']['temperatureControl']['temperatureValue'])
 
-                self.cr_step = (
-                    device_status['reply']['TemperatureControl']['step'])
+                if (self.cr_step != (
+                        device_status['reply']['temperatureControl']['step'])):
+                    self.cr_step = (
+                        device_status['reply']['temperatureControl']['step'])
 
                 if (self.select_temp != (
-                        device_status['reply']['TemperatureControl']['selectedTemperatureLevel'])):
+                        device_status['reply']['temperatureControl']['selectedTemperatureLevel'])):
                     self.select_temp = (
-                        device_status['reply']['TemperatureControl']['selectedTemperatureLevel'])
+                        device_status['reply']['temperatureControl']['selectedTemperatureLevel'])
 
                 if self.number_temp:
                     self.sl_level.setValue(self.temperature)
@@ -763,8 +777,8 @@ class LaundryWasher(BaseDeviceUI):
                             str(round(self.cr_step / 100)))
                         self.sl_level.setSingleStep(self.cr_step / 100)
 
-                if self.on_off != device_status['reply']['OnOffControl']['onOff']:
-                    self.on_off = device_status['reply']['OnOffControl']['onOff']
+                if self.on_off != device_status['reply']['onOff']['onOff']:
+                    self.on_off = device_status['reply']['onOff']['onOff']
                     if self.on_off:
                         self.lbl_main_status.setText('On')
                         self.sw.setCheckState(Qt.Checked)
@@ -773,30 +787,30 @@ class LaundryWasher(BaseDeviceUI):
                         self.sw.setCheckState(Qt.Unchecked)
 
                 if (self.cr_opState_index !=
-                        device_status['reply']['LaundryOperationalState']['crOpStateIndex']):
-                    self.cr_opState_index = device_status['reply']['LaundryOperationalState']['crOpStateIndex']
+                        device_status['reply']['laundryOperationalState']['crOpStateIndex']):
+                    self.cr_opState_index = device_status['reply']['laundryOperationalState']['crOpStateIndex']
                     self.operational_box.setCurrentIndex(self.cr_opState_index)
 
                 if (self.crFeature_tem_control !=
-                        device_status['reply']['TempControlFeature']['tempFeature']):
-                    self.crFeature_tem_control = device_status['reply']['TempControlFeature']['tempFeature']
+                        device_status['reply']['tempControlFeature']['tempFeature']):
+                    self.crFeature_tem_control = device_status['reply']['tempControlFeature']['tempFeature']
                     self.tem_control_box.setCurrentIndex(
                         self.crFeature_tem_control)
 
                 if (self.crFeature_laun_mode !=
-                        device_status['reply']['LaundryControlFeature']['laundryControlFeature']):
+                        device_status['reply']['laundryControlFeature']['laundryControlFeature']):
                     self.crFeature_laun_mode = device_status['reply'][
-                        'LaundryControlFeature']['laundryControlFeature']
+                        'laundryControlFeature']['laundryControlFeature']
                     self.feature_box.setCurrentIndex(self.crFeature_laun_mode)
 
                 if (self.crRinse_control !=
-                        device_status['reply']['NumberOfRinses']['numberOfRinses']):
-                    self.crRinse_control = device_status['reply']['NumberOfRinses']['numberOfRinses']
+                        device_status['reply']['numberOfRinses']['numberOfRinses']):
+                    self.crRinse_control = device_status['reply']['numberOfRinses']['numberOfRinses']
                     self.rinse_box.setCurrentIndex(self.crRinse_control)
 
                 if (self.cr_error_state !=
-                        device_status['reply']['LaundryOperationalState']['errState']):
-                    self.cr_error_state = device_status['reply']['LaundryOperationalState']['errState']
+                        device_status['reply']['laundryOperationalState']['errState']):
+                    self.cr_error_state = device_status['reply']['laundryOperationalState']['errState']
                     if self.cr_error_state == NO_ERROR:
                         self.lbl_error_status.setText('Error state : No Error')
                     elif self.cr_error_state == UNABLE_TO_START_OR_RESUME:
@@ -810,8 +824,8 @@ class LaundryWasher(BaseDeviceUI):
                             'Error state : CommandInvalidInState')
 
                 if (self.cr_state != device_status['reply']
-                        ['LaundryOperationalState']['operationalState']):
-                    self.cr_state = device_status['reply']['LaundryOperationalState']['operationalState']
+                        ['laundryOperationalState']['operationalState']):
+                    self.cr_state = device_status['reply']['laundryOperationalState']['operationalState']
                     if self.cr_state == STOPPED:
                         self.lbl_operational_mod.setText(
                             'Operational State : Stopped')
@@ -826,8 +840,8 @@ class LaundryWasher(BaseDeviceUI):
                             'Operational State : Error')
 
                 if (self.cr_phase != device_status['reply']
-                        ['LaundryOperationalState']['currentPhase']):
-                    self.cr_phase = device_status['reply']['LaundryOperationalState']['currentPhase']
+                        ['laundryOperationalState']['currentPhase']):
+                    self.cr_phase = device_status['reply']['laundryOperationalState']['currentPhase']
                     if self.cr_phase == WASHING:
                         self.lbl_oper_status.setText(
                             'Current Phase : {}'.format("Washing "))
@@ -842,9 +856,9 @@ class LaundryWasher(BaseDeviceUI):
                             'Current Phase : {}'.format("Cooling"))
 
                 if (self.cr_speed != (
-                        device_status['reply']['SpinSpeed']['spinSpeed'])):
+                        device_status['reply']['spinSpeed']['spinSpeed'])):
                     self.cr_speed = (
-                        device_status['reply']['SpinSpeed']['spinSpeed'])
+                        device_status['reply']['spinSpeed']['spinSpeed'])
                     if self.cr_speed == OFF:
                         self.spin_speeds_box.setCurrentIndex(OFF)
                     elif self.cr_speed == LOW:

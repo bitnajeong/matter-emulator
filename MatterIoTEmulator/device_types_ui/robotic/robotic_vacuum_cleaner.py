@@ -190,7 +190,7 @@ class RobotVacuum(BaseDeviceUI):
     def set_crphase_drying(self):
         """Set current phase attribute to DRYING_PHASE"""
         self.cr_phase = DRYING_PHASE
-        self.client.set({'operationalState': {'currentPhase': self.cr_phase}})
+        self.client.set({'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
 
     def destroy_timer_cleaning(self):
         """Destroy timer object of cleaning run mode"""
@@ -235,17 +235,21 @@ class RobotVacuum(BaseDeviceUI):
         Handle cleaning process
         Update current phase, operational state, error state
         """
+        self.client.set(
+                {'rvcOpState': {'operationalState': self.cr_State, 'countdownTime': self.countdown_time}})
+        
         self.lbl_time.setText(
             "In Cleaning processing...{}s".format(
                 self.countdown_time))
         if self.countdown_time <= 0:
             self.destroy_timer_cleaning()
+            self.countdown_time = 0
             self.cr_phase = DOCKING_PHASE
-            self.client.set({'rvcOpState': {'operationalState': STOPPED}})
+            self.client.set({'rvcOpState': {'operationalState': STOPPED, 'countdownTime': self.countdown_time}})
             self.client.set(
                 {'rvcOpStateIndex': {'errState': self.cr_error_state, 'crOpStateIndex': 0}})
             self.client.set(
-                {'operationalState': {'currentPhase': self.cr_phase}})
+                {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
             self.client.set({'runMode': {'currentMode': IDLE}})
             self.lbl_time.setText('...Cleaning process Done...')
             dockingTimer = Timer(5, self.set_crphase_drying)
@@ -254,23 +258,23 @@ class RobotVacuum(BaseDeviceUI):
         elif 20 < self.countdown_time <= 30:
             self.cr_phase = CLEANING_PHASE
             self.client.set(
-                {'operationalState': {'currentPhase': self.cr_phase}})
-            self.countdown_time -= 1
+                {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
 
         elif 10 < self.countdown_time <= 20:
             if self.countdown_time <= 20:
                 self.client.set(
-                    {'rvcOpState': {'operationalState': SEEKING_CHARGER}})
+                    {'rvcOpState': {'operationalState': SEEKING_CHARGER, 'countdownTime': self.countdown_time}})
                 self.cr_phase = CHARGING_PHASE
                 self.client.set(
-                    {'operationalState': {'currentPhase': self.cr_phase}})
-            self.countdown_time -= 1
+                    {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
 
         elif 0 < self.countdown_time <= 10:
             if self.countdown_time <= 10:
-                self.client.set({'rvcOpState': {'operationalState': CHARGING}})
+                self.client.set({'rvcOpState': {'operationalState': CHARGING, 'countdownTime': self.countdown_time}})
                 self.client.set(
-                    {'operationalState': {'currentPhase': self.cr_phase}})
+                    {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
+        
+        if self.countdown_time > 0:
             self.countdown_time -= 1
 
     def run_process_mapping(self):
@@ -278,6 +282,9 @@ class RobotVacuum(BaseDeviceUI):
         Handle mapping process
         Update current phase, operational state, error state
         """
+        self.client.set(
+                {'rvcOpState': {'operationalState': self.cr_State, 'countdownTime': self.countdown_time}})
+
         self.lbl_time.setText(
             "In Mapping processing...{}s".format(
                 self.countdown_time))
@@ -288,7 +295,9 @@ class RobotVacuum(BaseDeviceUI):
         elif 0 < self.countdown_time <= 20:
             self.cr_phase = MAPPING_PHASE
             self.client.set(
-                {'operationalState': {'currentPhase': self.cr_phase}})
+                {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
+
+        if self.countdown_time > 0:
             self.countdown_time -= 1
 
     def handle_mapping_done(self):
@@ -298,10 +307,11 @@ class RobotVacuum(BaseDeviceUI):
         Notify mapping process done
         """
         self.cr_phase = DOCKING_PHASE
-        self.client.set({'rvcOpState': {'operationalState': STOPPED}})
+        self.countdown_time = 0
+        self.client.set({'rvcOpState': {'operationalState': STOPPED, 'countdownTime': self.countdown_time}})
         self.client.set(
             {'rvcOpStateIndex': {'errState': self.cr_error_state, 'crOpStateIndex': STOP}})
-        self.client.set({'operationalState': {'currentPhase': self.cr_phase}})
+        self.client.set({'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
         self.client.set({'runMode': {'currentMode': IDLE}})
         self.lbl_time.setText('...Mapping process Done...')
 
@@ -390,7 +400,7 @@ class RobotVacuum(BaseDeviceUI):
             self.client.set({'rvcOpStateIndex': {
                             'errState': self.cr_error_state, 'crOpStateIndex': STOPPED}})
             self.client.set(
-                {'operationalState': {'currentPhase': self.cr_phase}})
+                {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
             self.run_mode = IDLE
             self.client.set({'runMode': {'currentMode': self.run_mode}})
             statusTimer = Timer(2, self.notify_process_stopped)
@@ -400,7 +410,7 @@ class RobotVacuum(BaseDeviceUI):
             self.client.set({'rvcOpStateIndex': {
                             'errState': self.cr_error_state, 'crOpStateIndex': RUNNING}})
             self.client.set(
-                {'operationalState': {'currentPhase': self.cr_phase}})
+                {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
             if (self.run_mode != MAPPING):
                 self.destroy_timer_cleaning()
                 self.setup_timer_process_cleaning(30)
@@ -412,7 +422,7 @@ class RobotVacuum(BaseDeviceUI):
             self.client.set(
                 {'rvcOpStateIndex': {'errState': self.cr_error_state, 'crOpStateIndex': PAUSED}})
             self.client.set(
-                {'operationalState': {'currentPhase': self.cr_phase}})
+                {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
             if self.cr_phase != CHARGING_PHASE:
                 if (self.run_mode != MAPPING):
                     self.destroy_timer_cleaning()
@@ -436,7 +446,7 @@ class RobotVacuum(BaseDeviceUI):
             self.client.set(
                 {'rvcOpStateIndex': {'errState': self.cr_error_state, 'crOpStateIndex': RESUME}})
             self.client.set(
-                {'operationalState': {'currentPhase': self.cr_phase}})
+                {'rvcOpStatePhase': {'currentPhase': self.cr_phase}})
         self.mutex.release()
 
     def on_pressed_event(self):
@@ -456,14 +466,14 @@ class RobotVacuum(BaseDeviceUI):
         to matter device(backend) through rpc service
         """
         try:
-            data_1 = {'operationalState': {'phaseList': [0, 1, 2, 3]}}
-            data_2 = {'rvcOpState': {'operationalState': STOPPED}}
+            data_1 = {'rvcOpStatePhase': {'phaseList': [0, 1, 2, 3]}}
+            data_2 = {'rvcOpState': {'operationalState': STOPPED, 'countdownTime': 0}}
             data_3 = {
                 'runMode': {
                     'currentMode': IDLE}, 'cleanMode': {
-                    'currentMode': DEEP_CLEAN}, 'operationalState': {
+                    'currentMode': DEEP_CLEAN}, 'rvcOpStatePhase': {
                     'currentPhase': DOCKING_PHASE}, 'rvcOpStateIndex': {
-                    'errState': self.cr_error_state, 'crOpStateIndex': self.cr_opState_index}}
+                    'errState': NO_ERROR, 'crOpStateIndex': STOP}}
             self.client.set(data_1)
             self.client.set(data_2)
             self.client.set(data_3)
@@ -491,8 +501,8 @@ class RobotVacuum(BaseDeviceUI):
                     self.runmode_box.setCurrentIndex(self.run_mode)
 
                 if (self.change_mode_status !=
-                        device_status['reply']['operationalState']['changeModeStatus']):
-                    self.change_mode_status = device_status['reply']['operationalState']['changeModeStatus']
+                        device_status['reply']['rvcOpStatePhase']['changeModeStatus']):
+                    self.change_mode_status = device_status['reply']['rvcOpStatePhase']['changeModeStatus']
                     if self.change_mode_status == NO_ERROR:
                         self.status = ""
                     elif self.change_mode_status == 3:
@@ -573,7 +583,7 @@ class RobotVacuum(BaseDeviceUI):
                         self.lbl_operational_mod.setText(
                             'Operational State : Docked')
 
-                self.cr_phase = device_status['reply']['operationalState']['currentPhase']
+                self.cr_phase = device_status['reply']['rvcOpStatePhase']['currentPhase']
                 if self.cr_phase == CLEANING_PHASE:
                     self.lbl_oper_status.setText(
                         'Current Phase : {}'.format("Cleaning"))

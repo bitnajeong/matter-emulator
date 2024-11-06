@@ -86,14 +86,14 @@ class Dishwasher(BaseDeviceUI):
         :param parent: An UI object load Dishwasher device UI controller.
         """
         super().__init__(parent)
-        self.cr_phase = WASHING
+        self.cr_phase = COOLING
         self.cr_state = STOPPED
         self.cr_mode = NORMAL
         self.cr_error_state = NO_ERROR
         self.cr_opState_index = STOP
         self.cr_dishwasher_mode_feature = False
         self.cr_dishwasher_alarm_feature = False
-        self.cr_dishwasher_alarm = 6
+        self.cr_dishwasher_alarm = NOERROR
         self.cr_temperature_control_feature = 0
         self.on_off = False
         self.temperature = 0
@@ -299,8 +299,8 @@ class Dishwasher(BaseDeviceUI):
         self.number_temp = False
         self.select_temp_level = False
         self.mutex.acquire(timeout=1)
-        self.client.set({'DishTempControlFeature': {
-                        'TempFeature': feature_mode}})
+        self.client.set({'dishTempControlFeature': {
+                        'tempFeature': feature_mode}})
         self.mutex.release()
         if feature_mode == TEMP_NUMBER_FEATURE:
             self.number_temp = True
@@ -383,10 +383,10 @@ class Dishwasher(BaseDeviceUI):
             cr_step_value = round(float(self.line_edit_step.text()) * 100)
             if 0 <= cr_step_value <= 10000:
                 data = {
-                    'TemperatureControl': {
-                        'TemperatureSetpoint': self.temperature,
-                        'Step': cr_step_value,
-                        'SelectedTemperatureLevel': self.select_temp}}
+                    'temperatureControl': {
+                        'temperatureSetpoint': self.temperature,
+                        'step': cr_step_value,
+                        'selectedTemperatureLevel': self.select_temp}}
                 self.client.set(data)
                 self.is_edit = True
             else:
@@ -412,10 +412,10 @@ class Dishwasher(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         self.client.set(
             {
-                'TemperatureControl': {
-                    'TemperatureSetpoint': self.temperature,
-                    'Step': self.cr_step,
-                    'SelectedTemperatureLevel': level_mode}})
+                'temperatureControl': {
+                    'temperatureSetpoint': self.temperature,
+                    'step': self.cr_step,
+                    'selectedTemperatureLevel': level_mode}})
         self.mutex.release()
 
     def destroy_timer_dishwasher(self):
@@ -460,7 +460,8 @@ class Dishwasher(BaseDeviceUI):
                               cr_state=None,
                               cr_opState_index=None,
                               cr_phase=None,
-                              cr_error_state=None):
+                              cr_error_state=None,
+                              cr_countdown_time=None):
         """
         Set value for all attributes of operational state cluster
         :param cr_state: New value of operation state attribute
@@ -471,11 +472,12 @@ class Dishwasher(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         self.client.set(
             {
-                'OperationalState': {
-                    'OperationalState': cr_state if cr_state is not None else self.cr_state,
-                    'CurrentPhase': cr_phase if cr_phase is not None else self.cr_phase,
+                'operationalState': {
+                    'operationalState': cr_state if cr_state is not None else self.cr_state,
+                    'currentPhase': cr_phase if cr_phase is not None else self.cr_phase,
                     'crOpStateIndex': cr_opState_index if cr_opState_index is not None else self.cr_opState_index,
-                    'errState': cr_error_state if cr_error_state is not None else self.cr_error_state}})
+                    'errState': cr_error_state if cr_error_state is not None else self.cr_error_state,
+                    'countdownTime': cr_countdown_time if cr_countdown_time is not None else self.countdown_time}})
         self.mutex.release()
 
     def update_timer(self):
@@ -483,6 +485,7 @@ class Dishwasher(BaseDeviceUI):
         Handle set attributes value to matter device(backend)
         through rpc service when timer timout
         """
+        self.set_operational_state()
         self.lbl_time.setText(
             "In processing...{}s".format(
                 self.countdown_time))
@@ -507,7 +510,8 @@ class Dishwasher(BaseDeviceUI):
             if self.countdown_time == self.time_cooling:
                 self.set_operational_state(cr_phase=COOLING)
 
-        self.countdown_time -= 1
+        if self.countdown_time > 0:
+            self.countdown_time-= 1
 
     def notify_process_stopped(self):
         """Set label to notice process stopped"""
@@ -522,7 +526,7 @@ class Dishwasher(BaseDeviceUI):
         self.get_timer_mode()
         self.destroy_timer_dishwasher()
         self.mutex.acquire(timeout=1)
-        self.client.set({'DishwasherMode': {'CurrentMode': mode}})
+        self.client.set({'dishwasherMode': {'currentMode': mode}})
         self.mutex.release()
 
     def handle_operational_changed(self, mode):
@@ -530,10 +534,11 @@ class Dishwasher(BaseDeviceUI):
         Handle operational state change
         :param mode {int}: A new mode of operational state
         """
-        # logging.info("RPC SET DishWasher Operational state: " + str(mode))
+        logging.info("RPC SET DishWasher Operational state: " + str(mode))
         if mode == STOP:
             self.destroy_timer_dishwasher()
-            self.set_operational_state(cr_state=STOPPED, cr_opState_index=STOP)
+            self.countdown_time = 0
+            self.set_operational_state(cr_state=STOPPED, cr_opState_index=STOP, cr_phase=COOLING)
             statusTimer = Timer(2, self.notify_process_stopped)
             statusTimer.start()
 
@@ -568,7 +573,7 @@ class Dishwasher(BaseDeviceUI):
         logging.info("RPC SET Dishwasher mode feature: " + str(mode))
         self.mutex.acquire(timeout=1)
         self.client.set(
-            {'DishDepOnOffFeature': {'FeatureMapOnOff': True if mode == 1 else False}})
+            {'dishDepOnOffFeature': {'featureMapOnOff': True if mode == 1 else False}})
         self.mutex.release()
 
     def dishwasher_alarm_feature_changed(self, mode):
@@ -578,8 +583,8 @@ class Dishwasher(BaseDeviceUI):
         """
         logging.info("RPC SET Dishwasher alarm feature: " + str(mode))
         self.mutex.acquire(timeout=1)
-        self.client.set({'DishwasherAlarmReset': {
-            'FeatureMapReset': True if mode == 1 else False}})
+        self.client.set({'dishwasherAlarmReset': {
+            'featureMapReset': True if mode == 1 else False}})
         self.mutex.release()
 
     def dishwasher_alarm_changed(self, mode):
@@ -589,7 +594,7 @@ class Dishwasher(BaseDeviceUI):
         """
         logging.info("RPC SET Dishwasher alarm: " + str(mode))
         self.mutex.acquire(timeout=1)
-        self.client.set({'DishwasherAlarm': {'Value': mode}})
+        self.client.set({'dishwasherAlarm': {'alarmState': mode}})
         self.mutex.release()
 
     def on_pressed_event(self):
@@ -618,12 +623,12 @@ class Dishwasher(BaseDeviceUI):
 
         self.client.set(
             {
-                'TemperatureControl': {
-                    'TemperatureSetpoint': temp,
-                    'Step': self.cr_step,
-                    'SelectedTemperatureLevel': self.select_temp},
-                'OnOff': {
-                    'OnOff': self.on_off}})
+                'temperatureControl': {
+                    'temperatureSetpoint': temp,
+                    'step': self.cr_step,
+                    'selectedTemperatureLevel': self.select_temp},
+                'onOff': {
+                    'onOff': self.on_off}})
         self.mutex.release()
         self.is_on_control = False
 
@@ -634,24 +639,25 @@ class Dishwasher(BaseDeviceUI):
         """
         try:
             data = {
-                'DishTempControlFeature': {
-                    'TempFeature': 0},
-                'TemperatureControl': {
-                    'TemperatureSetpoint': 5015,
-                    'Step': 100,
-                    'SelectedTemperatureLevel': 0},
-                'DishwasherAlarm': {
-                    'Value': NOERROR},
-                'DishwasherMode': {
-                    'CurrentMode': HEAVY},
-                'OnOff': {
-                    'OnOff': True},
-                'OperationalState': {
-                    'CurrentPhase': RINSING,
-                    'OperationalState': STOPPED,
-                    'crOpStateIndex': self.cr_opState_index,
-                    'errState': self.cr_error_state}}
-            data_1 = {'OperationalState': {'PhaseList': [0, 1, 2]}}
+                'dishTempControlFeature': {
+                    'tempFeature': TEMP_NUMBER_FEATURE},
+                'temperatureControl': {
+                    'temperatureSetpoint': 5015,
+                    'step': 100,
+                    'selectedTemperatureLevel': 0},
+                'dishwasherAlarm': {
+                    'alarmState': NOERROR},
+                'dishwasherMode': {
+                    'currentMode': NORMAL},
+                'onOff': {
+                    'onOff': True},
+                'operationalState': {
+                    'countdownTime': 0,
+                    'currentPhase': WASHING,
+                    'operationalState': STOPPED,
+                    'crOpStateIndex': STOP,
+                    'errState': NO_ERROR}}
+            data_1 = {'operationalState': {'phaseList': [0, 1, 2]}}
             self.client.set(data_1)
             self.client.set(data)
             self.lbl_operational_mod.setText('Operational State : Stopped')
@@ -677,10 +683,10 @@ class Dishwasher(BaseDeviceUI):
             self.destroy_timer_dishwasher()
             self.client.set(
                 {
-                    'OperationalState': {
-                        'CurrentPhase': RINSING,
-                        'OperationalState': STOPPED,
-                        'CurrentPhase': RINSING,
+                    'operationalState': {
+                        'countdownTime': 0,
+                        'operationalState': STOPPED,
+                        'currentPhase': RINSING,
                         'crOpStateIndex': STOP,
                         'errState': NO_ERROR}})
             self.lbl_time.setText("...Process stopped...")
@@ -694,10 +700,10 @@ class Dishwasher(BaseDeviceUI):
         logging.info("RPC SET On/Off: " + str(data))
         self.mutex.acquire(timeout=1)
         if data == 0:
-            self.client.set({'OnOff': {'OnOff': False}})
+            self.client.set({'onOff': {'onOff': False}})
             self.check_onoff(False)
         else:
-            self.client.set({'OnOff': {'OnOff': True}})
+            self.client.set({'onOff': {'onOff': True}})
             self.check_onoff(True)
         self.mutex.release()
 
@@ -716,13 +722,13 @@ class Dishwasher(BaseDeviceUI):
             if device_status['status'] == 'OK':
 
                 if (self.cr_mode !=
-                        device_status['reply']['DishwasherMode']['CurrentMode']):
-                    self.cr_mode = device_status['reply']['DishwasherMode']['CurrentMode']
+                        device_status['reply']['dishwasherMode']['currentMode']):
+                    self.cr_mode = device_status['reply']['dishwasherMode']['currentMode']
                     self.washer_control_box.setCurrentIndex(self.cr_mode)
 
                 if (self.cr_state != device_status['reply']
-                        ['OperationalState']['OperationalState']):
-                    self.cr_state = device_status['reply']['OperationalState']['OperationalState']
+                        ['operationalState']['operationalState']):
+                    self.cr_state = device_status['reply']['operationalState']['operationalState']
                     if self.cr_state == STOPPED:
                         self.lbl_operational_mod.setText(
                             'Operational State : Stopped')
@@ -737,8 +743,8 @@ class Dishwasher(BaseDeviceUI):
                             'Operational State : Error')
 
                 if (self.cr_error_state !=
-                        device_status['reply']['OperationalState']['errState']):
-                    self.cr_error_state = device_status['reply']['OperationalState']['errState']
+                        device_status['reply']['operationalState']['errState']):
+                    self.cr_error_state = device_status['reply']['operationalState']['errState']
                     if self.cr_error_state == NO_ERROR:
                         self.lbl_error_status.setText('Error state : No Error')
                     elif self.cr_error_state == UNABLE_TO_START_OR_RESUME:
@@ -751,8 +757,8 @@ class Dishwasher(BaseDeviceUI):
                         self.lbl_error_status.setText(
                             'Error state : CommandInvalidInState')
 
-                if self.on_off != device_status['reply']['OnOff']['OnOff']:
-                    self.on_off = device_status['reply']['OnOff']['OnOff']
+                if self.on_off != device_status['reply']['onOff']['onOff']:
+                    self.on_off = device_status['reply']['onOff']['onOff']
                     if self.on_off:
                         self.lbl_main_status.setText('On')
                         self.sw.setCheckState(Qt.Checked)
@@ -761,18 +767,20 @@ class Dishwasher(BaseDeviceUI):
                         self.sw.setCheckState(Qt.Unchecked)
 
                 if (self.temperature != (
-                        device_status['reply']['TemperatureControl']['TemperatureSetpoint'])):
+                        device_status['reply']['temperatureControl']['temperatureSetpoint'])):
                     self.temperature = (
-                        device_status['reply']['TemperatureControl']['TemperatureSetpoint'])
+                        device_status['reply']['temperatureControl']['temperatureSetpoint'])
                     self.sl_level.setValue(self.temperature)
 
-                self.cr_step = (
-                    device_status['reply']['TemperatureControl']['Step'])
+                if (self.cr_step != (
+                        device_status['reply']['temperatureControl']['step'])):
+                    self.cr_step = (
+                        device_status['reply']['temperatureControl']['step'])
 
                 if (self.select_temp != (
-                        device_status['reply']['TemperatureControl']['SelectedTemperatureLevel'])):
+                        device_status['reply']['temperatureControl']['selectedTemperatureLevel'])):
                     self.select_temp = (
-                        device_status['reply']['TemperatureControl']['SelectedTemperatureLevel'])
+                        device_status['reply']['temperatureControl']['selectedTemperatureLevel'])
 
                 if self.number_temp:
                     self.sl_level.setValue(self.temperature)
@@ -786,13 +794,13 @@ class Dishwasher(BaseDeviceUI):
                         self.sl_level.setSingleStep(self.cr_step / 100)
 
                 if (self.cr_opState_index !=
-                        device_status['reply']['OperationalState']['crOpStateIndex']):
-                    self.cr_opState_index = device_status['reply']['OperationalState']['crOpStateIndex']
+                        device_status['reply']['operationalState']['crOpStateIndex']):
+                    self.cr_opState_index = device_status['reply']['operationalState']['crOpStateIndex']
                     self.operational_box.setCurrentIndex(self.cr_opState_index)
 
                 if (self.cr_phase !=
-                        device_status['reply']['OperationalState']['CurrentPhase']):
-                    self.cr_phase = device_status['reply']['OperationalState']['CurrentPhase']
+                        device_status['reply']['operationalState']['currentPhase']):
+                    self.cr_phase = device_status['reply']['operationalState']['currentPhase']
                     if self.cr_phase == WASHING:
                         self.lbl_oper_status.setText(
                             'Current Phase : {}'.format("Washing"))
@@ -808,29 +816,29 @@ class Dishwasher(BaseDeviceUI):
 
                 # Update feature map
                 if (self.cr_dishwasher_mode_feature !=
-                        device_status['reply']['DishDepOnOffFeature']['FeatureMapOnOff']):
+                        device_status['reply']['dishDepOnOffFeature']['featureMapOnOff']):
                     self.cr_dishwasher_mode_feature = device_status[
-                        'reply']['DishDepOnOffFeature']['FeatureMapOnOff']
+                        'reply']['dishDepOnOffFeature']['featureMapOnOff']
                     self.dishwasher_mode_feature_box.setCurrentIndex(
                         int(self.cr_dishwasher_mode_feature))
 
                 if (self.cr_dishwasher_alarm_feature !=
-                        device_status['reply']['DishwasherAlarmReset']['FeatureMapReset']):
+                        device_status['reply']['dishwasherAlarmReset']['featureMapReset']):
                     self.cr_dishwasher_alarm_feature = device_status[
-                        'reply']['DishwasherAlarmReset']['FeatureMapReset']
+                        'reply']['dishwasherAlarmReset']['featureMapReset']
                     self.dishwasher_alarm_feature_box.setCurrentIndex(
                         int(self.cr_dishwasher_alarm_feature))
 
                 if (self.cr_dishwasher_alarm !=
-                        device_status['reply']['DishwasherAlarm']['Value']):
-                    self.cr_dishwasher_alarm = device_status['reply']['DishwasherAlarm']['Value']
+                        device_status['reply']['dishwasherAlarm']['alarmState']):
+                    self.cr_dishwasher_alarm = device_status['reply']['dishwasherAlarm']['alarmState']
                     self.dishwasher_alarm_box.setCurrentIndex(
                         self.cr_dishwasher_alarm)
 
                 if (self.cr_temperature_control_feature !=
-                        device_status['reply']['DishTempControlFeature']['TempFeature']):
+                        device_status['reply']['dishTempControlFeature']['tempFeature']):
                     self.cr_temperature_control_feature = device_status[
-                        'reply']['DishTempControlFeature']['TempFeature']
+                        'reply']['dishTempControlFeature']['tempFeature']
                     self.temperature_control_feature_box.setCurrentIndex(
                         self.cr_temperature_control_feature)
 

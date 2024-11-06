@@ -28,7 +28,7 @@ logging.basicConfig(
 )
 
 
-class Air_Purifier_Client(DeviceClient):
+class AirPurifierClient(DeviceClient):
     """
     AirPurifier Client class for creating a device.
     """
@@ -66,143 +66,142 @@ class Air_Purifier_Client(DeviceClient):
         reply = json_format.MessageToDict(result[1])
         return {'status': result[0].name, 'reply': reply}
 
-    def getFanMode(self):
-        """
-        Return FAN mode.
-        """
-        result = self.rpcs.chip.rpc.AirPurifier.GetFanMode()
-        # logging.info(result)
-        reply = json_format.MessageToDict(
-            result[1], airpurifier_service_pb2.AirPurifierState())
-        return {'status': result[0].name, 'reply': reply}
-
-    def setFanMode(self, data):
-        """
-        Set FAN mode and return the result.
-
-        Arguments:
-            data {str} -- the FAN mode
-        """
-        arg = airpurifier_service_pb2.AirPurifierState()
-        json_format.ParseDict(data, arg)
-        result = self.rpcs.chip.rpc.AirPurifier.SetFanMode(arg)
-        reply = json_format.MessageToDict(result[1])
-        return {'status': result[0].name, 'reply': reply}
-
-    def getMeasuredValue(self):
+    def GetTempValue(self):
         """
         Return measured value.
         """
-        result = self.rpcs.chip.rpc.AirPurifier.GetMeasuredValue()
+        result = self.rpcs.chip.rpc.AirPurifier.GetTempValue()
         reply = json_format.MessageToDict(
-            result[1], airpurifier_service_pb2.TemperatureSensor())
+            result[1], airpurifier_service_pb2.TemperatureMeasurementAirPurifier())
         return {'status': result[0].name, 'reply': reply}
 
-    def setMeasuredValue(self, data):
+    def SetTempValue(self, data):
         """
         Set measured value and return the result.
 
         Arguments:
             data {str} -- the measured value
         """
-        arg = airpurifier_service_pb2.TemperatureSensor()
+        arg = airpurifier_service_pb2.TemperatureMeasurementAirPurifier()
         json_format.ParseDict(data, arg)
-        result = self.rpcs.chip.rpc.AirPurifier.SetMeasuredValue(arg)
+        result = self.rpcs.chip.rpc.AirPurifier.SetTempValue(arg)
         reply = json_format.MessageToDict(result[1])
         return {'status': result[0].name, 'reply': reply}
 
-    def getHumidityValue(self):
+    def GetHumidityValue(self):
         """
         Return humidity value.
         """
         result = self.rpcs.chip.rpc.AirPurifier.GetHumidityValue()
         reply = json_format.MessageToDict(
-            result[1], airpurifier_service_pb2.HumiditySensor())
+            result[1], airpurifier_service_pb2.RelativeHumidityMeasurementAirPurifier())
         return {'status': result[0].name, 'reply': reply}
 
-    def setHumidityValue(self, data):
+    def SetHumidityValue(self, data):
         """
         Set humidity value and return the result.
 
         Arguments:
             data {str} -- the humidity value
         """
-        arg = airpurifier_service_pb2.HumiditySensor()
+        arg = airpurifier_service_pb2.RelativeHumidityMeasurementAirPurifier()
         json_format.ParseDict(data, arg)
         result = self.rpcs.chip.rpc.AirPurifier.SetHumidityValue(arg)
         reply = json_format.MessageToDict(result[1])
         return {'status': result[0].name, 'reply': reply}
 
-    def getAirQuality(self):
+    def GetAirQuality(self):
         """
         Return AirQuality value.
         """
         result = self.rpcs.chip.rpc.AirPurifier.GetAirQuality()
         reply = json_format.MessageToDict(
-            result[1], airpurifier_service_pb2.AirQuality())
+            result[1], airpurifier_service_pb2.AirQualityAirPurifier())
         return {'status': result[0].name, 'reply': reply}
 
-    def setAirQuality(self, data):
+    def SetAirQuality(self, data):
         """
         Set AirQuality value and return the result.
 
         Arguments:
             data {str} -- the AirQuality value
         """
-        arg = airpurifier_service_pb2.AirQuality()
+        arg = airpurifier_service_pb2.AirQualityAirPurifier()
         json_format.ParseDict(data, arg)
         result = self.rpcs.chip.rpc.AirPurifier.SetAirQuality(arg)
         reply = json_format.MessageToDict(result[1])
         return {'status': result[0].name, 'reply': reply}
 
-    def getCondition(self):
+    def GetCondition(self):
         """
         Return AirCondition value.
         """
         result = self.rpcs.chip.rpc.AirPurifier.GetCondition()
         reply = json_format.MessageToDict(
-            result[1], airpurifier_service_pb2.HEPAFilter())
+            result[1], airpurifier_service_pb2.HEPAFilterMonitoringAirPurifier())
         return {'status': result[0].name, 'reply': reply}
 
-    def setCondition(self, data):
+    def SetCondition(self, data):
         """
         Set AirCondition value and return the result.
 
         Arguments:
             data {str} -- the AirCondition value
         """
-        arg = airpurifier_service_pb2.HEPAFilter()
+        arg = airpurifier_service_pb2.HEPAFilterMonitoringAirPurifier()
         json_format.ParseDict(data, arg)
         result = self.rpcs.chip.rpc.AirPurifier.SetCondition(arg)
         reply = json_format.MessageToDict(result[1])
         return {'status': result[0].name, 'reply': reply}
 
     # PM25
-    def getPM25(self):
+    def GetPM25(self):
         """
         Return PM25 value.
         """
         result = self.rpcs.chip.rpc.AirPurifier.GetPM25()
         reply = json_format.MessageToDict(
-            result[1], airpurifier_service_pb2.PM25())
+            result[1], airpurifier_service_pb2.PM25ConcentrationMeasurementAirPurifier())
         return {'status': result[0].name, 'reply': reply}
 
-    def setPM25(self, data):
+    def SetPM25(self, data):
         """
         Set PM25 value and return the result.
 
         Arguments:
             data {str} -- the PM25 value
         """
-        arg = airpurifier_service_pb2.PM25()
+        arg = airpurifier_service_pb2.PM25ConcentrationMeasurementAirPurifier()
         json_format.ParseDict(data, arg)
         result = self.rpcs.chip.rpc.AirPurifier.SetPM25(arg)
+        reply = json_format.MessageToDict(result[1])
+        return {'status': result[0].name, 'reply': reply}
+    
+    # Thermostat
+    def GetThermostat(self):
+        """
+        Return Thermostat value.
+        """
+        result = self.rpcs.chip.rpc.AirPurifier.GetThermostat()
+        reply = json_format.MessageToDict(
+            result[1], airpurifier_service_pb2.ThermostatAirPurifier())
+        return {'status': result[0].name, 'reply': reply}
+
+    def SetThermostat(self, data):
+        """
+        Set Thermostat value and return the result.
+
+        Arguments:
+            data {str} -- the Thermostat value
+        """
+        arg = airpurifier_service_pb2.ThermostatAirPurifier()
+        json_format.ParseDict(data, arg)
+        result = self.rpcs.chip.rpc.AirPurifier.SetThermostat(arg)
         reply = json_format.MessageToDict(result[1])
         return {'status': result[0].name, 'reply': reply}
 
 
 if __name__ == '__main__':
     # This is the sample only
-    client = Air_Purifier_Client()
-    print(client.getFanMode())
+    client = AirPurifierClient()
     time.sleep()

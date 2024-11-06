@@ -327,12 +327,12 @@ class SmokeCoAlarm(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         self.client.set(
             {
-                'SmokeCOAlarmCluster': {
-                    'mExpressedState': self.express_state,
-                    'mSmokeState': self.smoke_state,
-                    'mBatteryAlert': self.battery_status,
-                    'mCOState': self.co_state,
-                    'mSmokeSensitivityLevel': smoke_sense_level}})
+                'smokeCOAlarmCluster': {
+                    'expressedState': self.express_state,
+                    'smokeState': self.smoke_state,
+                    'batteryAlert': self.battery_status,
+                    'coState': self.co_state,
+                    'smokeSensitivityLevel': smoke_sense_level}})
         self.mutex.release()
 
     def enable_update_mode(self):
@@ -351,12 +351,12 @@ class SmokeCoAlarm(BaseDeviceUI):
         self.mutex.acquire(timeout=1)
         self.client.set(
             {
-                'SmokeCOAlarmCluster': {
-                    'mExpressedState': self.express_state,
-                    'mSmokeState': self.smoke_state,
-                    'mBatteryAlert': battery_index,
-                    'mCOState': self.co_state,
-                    'mSmokeSensitivityLevel': self.smoke_sense_level}})
+                'smokeCOAlarmCluster': {
+                    'expressedState': self.express_state,
+                    'smokeState': self.smoke_state,
+                    'batteryAlert': battery_index,
+                    'coState': self.co_state,
+                    'smokeSensitivityLevel': self.smoke_sense_level}})
         self.mutex.release()
 
     def on_text_edited_bat(self):
@@ -392,8 +392,8 @@ class SmokeCoAlarm(BaseDeviceUI):
             value_bat = round(int(self.line_edit_bat.text()) * 2)
             if 0 <= value_hum <= 10000:
                 data = {
-                    'RelativeHumidityMeasurement': {
-                        'mMeasuredValue': value_hum}}
+                    'relativeHumidityMeasurement': {
+                        'measuredValue': value_hum}}
                 self.client.set(data)
                 self.is_edit_hum = True
             else:
@@ -401,7 +401,7 @@ class SmokeCoAlarm(BaseDeviceUI):
                 self.line_edit_hum.setText(str(self.humidity))
 
             if 0 <= value_bat <= 200:
-                data = {'powerSource': {'mBatPercentRemaining': value_bat}}
+                data = {'powerSource': {'batPercentRemaining': value_bat}}
                 self.client.set(data)
                 self.is_edit_bat = True
             else:
@@ -410,8 +410,8 @@ class SmokeCoAlarm(BaseDeviceUI):
 
             if 0 <= value_temp <= 10000:
                 data = {
-                    'TemperatureMeasurement': {
-                        'mMeasuredValue': value_temp}}
+                    'temperatureMeasurement': {
+                        'measuredValue': value_temp}}
                 self.client.set(data)
                 self.is_edit_temp = True
             else:
@@ -420,8 +420,8 @@ class SmokeCoAlarm(BaseDeviceUI):
 
             if 0 <= value_co <= 150:
                 data = {
-                    'CarbonMonoxideConcentrationMeasurement': {
-                        'mMeasuredValue': value_co}}
+                    'carbonMonoxideConcentrationMeasurement': {
+                        'measuredValue': value_co}}
                 self.client.set(data)
                 self.is_edit_co_done = True
             else:
@@ -450,22 +450,22 @@ class SmokeCoAlarm(BaseDeviceUI):
         """
         try:
             data = {
-                'SmokeCOAlarmCluster': {
-                    'mExpressedState': EXP_NORMAL,
-                    'mSmokeState': NORMAL,
-                    'mBatteryAlert': NORMAL,
-                    'mCOState': NORMAL,
-                    'mSmokeSensitivityLevel': HIGH},
+                'smokeCOAlarmCluster': {
+                    'expressedState': EXP_NORMAL,
+                    'smokeState': NORMAL,
+                    'batteryAlert': NORMAL,
+                    'coState': NORMAL,
+                    'smokeSensitivityLevel': HIGH},
                 'featureMap': {
                     'featureMap': ALL_FEATURE},
-                'RelativeHumidityMeasurement': {
-                    'mMeasuredValue': self.humidity},
-                'TemperatureMeasurement': {
-                    'mMeasuredValue': self.temperature},
-                'CarbonMonoxideConcentrationMeasurement': {
-                    'mMeasuredValue': self.co},
+                'relativeHumidityMeasurement': {
+                    'measuredValue': self.humidity},
+                'temperatureMeasurement': {
+                    'measuredValue': self.temperature},
+                'carbonMonoxideConcentrationMeasurement': {
+                    'measuredValue': self.co},
                 'powerSource': {
-                    'mBatPercentRemaining': self.battary},
+                    'batPercentRemaining': self.battary},
             }
             self.client.set(data)
         except Exception as e:
@@ -479,30 +479,30 @@ class SmokeCoAlarm(BaseDeviceUI):
         """
         if 0 < self.co <= 30:
             data = {
-                'SmokeCOAlarmCluster': {
-                    'mExpressedState': EXP_NORMAL,
-                    'mSmokeState': NORMAL,
-                    'mCOState': NORMAL,
-                    'mSmokeSensitivityLevel': self.smoke_sense_level,
-                    'mBatteryAlert': self.battery_status}}
+                'smokeCOAlarmCluster': {
+                    'expressedState': EXP_NORMAL,
+                    'smokeState': NORMAL,
+                    'coState': NORMAL,
+                    'smokeSensitivityLevel': self.smoke_sense_level,
+                    'batteryAlert': self.battery_status}}
             self.client.set(data)
         elif 30 < self.co <= 70:
             data = {
-                'SmokeCOAlarmCluster': {
-                    'mExpressedState': EXP_NORMAL,
-                    'mSmokeState': WARNING,
-                    'mCOState': WARNING,
-                    'mSmokeSensitivityLevel': self.smoke_sense_level,
-                    'mBatteryAlert': self.battery_status}}
+                'smokeCOAlarmCluster': {
+                    'expressedState': EXP_NORMAL,
+                    'smokeState': WARNING,
+                    'coState': WARNING,
+                    'smokeSensitivityLevel': self.smoke_sense_level,
+                    'batteryAlert': self.battery_status}}
             self.client.set(data)
         else:
             data = {
-                'SmokeCOAlarmCluster': {
-                    'mExpressedState': EXP_SMOKE_ALARM,
-                    'mSmokeState': CRITICAL,
-                    'mCOState': CRITICAL,
-                    'mSmokeSensitivityLevel': self.smoke_sense_level,
-                    'mBatteryAlert': self.battery_status}}
+                'smokeCOAlarmCluster': {
+                    'expressedState': EXP_SMOKE_ALARM,
+                    'smokeState': CRITICAL,
+                    'coState': CRITICAL,
+                    'smokeSensitivityLevel': self.smoke_sense_level,
+                    'batteryAlert': self.battery_status}}
             self.client.set(data)
 
     def set_express_state_status(self):
@@ -551,53 +551,53 @@ class SmokeCoAlarm(BaseDeviceUI):
 
                 # Update smoke sense level
                 if (self.smoke_sense_level !=
-                        device_status['reply']["SmokeCOAlarmCluster"]["mSmokeSensitivityLevel"]):
-                    self.smoke_sense_level = device_status['reply']["SmokeCOAlarmCluster"]["mSmokeSensitivityLevel"]
+                        device_status['reply']["smokeCOAlarmCluster"]["smokeSensitivityLevel"]):
+                    self.smoke_sense_level = device_status['reply']["smokeCOAlarmCluster"]["smokeSensitivityLevel"]
                     self.smoke_sense_level_box.setCurrentIndex(
                         self.smoke_sense_level)
 
                 # Update battery status
                 if self.enable_update:
-                    self.battery_status = device_status['reply']["SmokeCOAlarmCluster"]["mBatteryAlert"]
+                    self.battery_status = device_status['reply']["smokeCOAlarmCluster"]["batteryAlert"]
                     self.battery_status_box.setCurrentIndex(
                         self.battery_status)
 
                 # Update humidity
                 self.humidity = round(
                     float(
-                        device_status['reply']['RelativeHumidityMeasurement']['mMeasuredValue']) / 100, 2)
+                        device_status['reply']['relativeHumidityMeasurement']['measuredValue']) / 100, 2)
                 if self.is_edit_hum:
                     self.line_edit_hum.setText(str(self.humidity))
 
                 # Update temperature
                 self.temperature = round(
                     float(
-                        device_status['reply']['TemperatureMeasurement']['mMeasuredValue']) / 100, 2)
+                        device_status['reply']['temperatureMeasurement']['measuredValue']) / 100, 2)
                 if self.is_edit_temp:
                     self.line_edit_temp.setText(str(self.temperature))
 
                 # Update battary
                 self.battary = round(
-                    int(device_status['reply']['powerSource']['mBatPercentRemaining']) / 2)
+                    int(device_status['reply']['powerSource']['batPercentRemaining']) / 2)
                 if self.is_edit_bat:
                     self.line_edit_bat.setText(str(self.battary))
 
                 # Update express state
                 self.express_state = (
-                    device_status['reply']["SmokeCOAlarmCluster"]["mExpressedState"])
+                    device_status['reply']["smokeCOAlarmCluster"]["expressedState"])
                 self.set_express_state_status()
 
                 # Update CO measurement
                 self.co = round(
                     float(
-                        device_status['reply']["CarbonMonoxideConcentrationMeasurement"]["mMeasuredValue"]), 2)
+                        device_status['reply']["carbonMonoxideConcentrationMeasurement"]["measuredValue"]), 2)
                 if self.is_edit_co_done:
                     self.line_edit_co.setText(str(self.co))
                     self.check_co()
 
                 # Update smoke state
                 self.smoke_state = (
-                    device_status['reply']["SmokeCOAlarmCluster"]["mSmokeState"])
+                    device_status['reply']["smokeCOAlarmCluster"]["smokeState"])
                 if self.smoke_state == NORMAL:
                     self.btn_smoke.setText('Normal')
                     self.btn_smoke.setStyleSheet(
@@ -614,7 +614,7 @@ class SmokeCoAlarm(BaseDeviceUI):
 
                 # Update co state
                 self.co_state = (
-                    device_status['reply']["SmokeCOAlarmCluster"]["mCOState"])
+                    device_status['reply']["smokeCOAlarmCluster"]["coState"])
                 if self.co_state == NORMAL:
                     self.btn_co.setText('Normal')
                     self.btn_co.setStyleSheet(
