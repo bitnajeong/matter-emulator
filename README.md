@@ -11,24 +11,26 @@
     - Only support wifi and ethernet interface
 
 ## Installation Guide
-### 1. Setup Raspberry-Pi 4
-    - PI 4 Model B microSD card 32/64GB
-    - OS version (64bit): https://downloads.raspberrypi.org/raspios_arm64/images/raspios_arm64-2022-09-26/2022-09-22-raspios-bullseye-arm64.img.xz
-    - Raspberry PI Imager Tool for Window: https://downloads.raspberrypi.org/imager/imager_1.8.5.exe, Ubuntu: $ sudo apt install rpi-imager,
-      You can refer to https://www.raspberrypi.com/news/raspberry-pi-imager-imaging-utility/ to flash image for Pi
-### 2. Download source code
-    $ cd ~
-    $ git clone <URL_TO_REPO>
-### 3. Setup environment
-    $ cd matter-emulator/MatterIoTEmulator/scripts/
-    $ ./install.sh
+### Requirements
+- Raspberry PI 4 (NOT PI400)
+- microSD card 32GB or greater
+- Raspberry Pi OS Desktop version (64bit): https://downloads.raspberrypi.org/raspios_arm64/images/raspios_arm64-2022-09-26/2022-09-22-raspios-bullseye-arm64.img.xz
+- Raspberry PI Image Tool  Tool:https://www.raspberrypi.com/news/raspberry-pi-imager-imaging-utility/   f
+
+### 1. Clone this repository
+    git clone https://github.com/bitnajeong/matter-emulator.git
+
+### 2. Run Installer
+    cd matter-emulator/scripts/
+    ./install.sh
 
 ## Usage
 ### 1. Run Matter IoT Emulator
-    After installing environment successfully without errors. You can enjoy with Matter IoT Emulator.
-    (Pre-condition: Need to connect wifi or ethernet to Raspberry-Pi)
-    $ cd matter-emulator/MatterIoTEmulator/scripts/
-    $ ./run-matter-emulator-app
+After installing environment successfully without errors. You can enjoy with Matter IoT Emulator.
+ensure that your Pi is connected to Ethernet or WiFi
+
+    cd matter-emulator/scripts/
+    ./run-matter-emulator-app
 
     After Matter IoT Emulator launched success:
     - On the left side "Device Type" label:
