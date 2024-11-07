@@ -12,7 +12,7 @@ Matter IoT Emulator run on Raspberry-Pi 4
 
 ## Installation Guide
 ### Requirements
-- Raspberry PI 4  
+- Raspberry PI 4 (NOT PI400)
 - microSD card 32GB or greater
 - Raspberry Pi OS Desktop version (64bit): https://downloads.raspberrypi.org/raspios_arm64/images/raspios_arm64-2022-09-26/2022-09-22-raspios-bullseye-arm64.img.xz
 - Raspberry PI Image Tool  Tool:https://www.raspberrypi.com/news/raspberry-pi-imager-imaging-utility/   f
@@ -21,16 +21,16 @@ Matter IoT Emulator run on Raspberry-Pi 4
     git clone https://github.com/bitnajeong/matter-emulator.git
 
 ### 2. Run Installer
-    $ cd matter-emulator/scripts/
-    $ ./install.sh
+    cd matter-emulator/scripts/
+    ./install.sh
 
 ## Usage
 ### 1. Run Matter IoT Emulator
 After installing environment successfully without errors. You can enjoy with Matter IoT Emulator.
 ensure that your Pi is connected to Ethernet or WiFi
 
-    $ cd matter-emulator/scripts/
-    $ ./run-matter-emulator-app
+    cd matter-emulator/scripts/
+    ./run-matter-emulator-app
 
 After Matter IoT Emulator launched success:
 - On the left side "Device Type" label:
